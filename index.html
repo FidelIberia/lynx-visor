@@ -278,15 +278,28 @@ async function actualizar() {
     estado.leido = Date.now();
     $('hora').textContent = 'leído a las ' + new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
     aviso.hidden = true;
+    // El texto leído se guarda sólo tras pintarlo bien: si falla, se vuelve a intentar en la siguiente lectura.
     if (datos.lector !== estado.lectorTexto) {
+      const previo = estado.lector;
+      try {
+        estado.lector = lectorValido(datos.lector);
+        pintarLector();
+      } catch (error) {
+        estado.lector = previo;
+        throw error;
+      }
       estado.lectorTexto = datos.lector;
-      estado.lector = datos.lector ? JSON.parse(datos.lector) : null;
-      pintarLector();
     }
     if (datos.avance !== estado.avanceTexto) {
+      const previo = estado.avance;
+      try {
+        estado.avance = leerAvance(datos.avance);
+        await pintarAvance();
+      } catch (error) {
+        estado.avance = previo;
+        throw error;
+      }
       estado.avanceTexto = datos.avance;
-      estado.avance = leerAvance(datos.avance);
-      await pintarAvance();
     }
   } catch (error) {
     aviso.textContent = 'No se pudo actualizar: ' + error.message + '. Se reintentará en dos minutos.';
@@ -294,6 +307,13 @@ async function actualizar() {
     if (!estado.avance) $('estado').textContent = 'Sin datos del avance.';
     if (!estado.lector) $('lector').innerHTML = '<p class="vacio">Sin datos del roadmap.</p>';
   }
+}
+
+// Un lector.json sin «roadmap» (p. ej. {}) se trata como ausente, igual que un gist sin lector.json.
+function lectorValido(texto) {
+  if (!texto) return null;
+  const datos = JSON.parse(texto);
+  return datos && typeof datos === 'object' && datos.roadmap && typeof datos.roadmap === 'object' ? datos : null;
 }
 
 // ---------- avance.md ----------
