@@ -6,7 +6,7 @@
 <meta name="color-scheme" content="light dark">
 <title>Avance del roadmap</title>
 <style>
-/* Visor de Lynx: pestaña «Avance» (grafo del plan de avance.md) y pestaña «Roadmap» (lector de lector.json). */
+/* Visor de Lynx: pestaña «Avance» (grafo del plan de avance.md), «Roadmap» (lector de lector.json) y «Ramas» (grafo de ramas.md). */
 :root {
   --fondo: #f5f6f8; --superficie: #ffffff; --texto: #111827; --suave: #4b5563; --linea: #d4d8de; --linea-suave: #e7eaee;
   --acento: #1d4ed8; --foco: #2563eb; --aviso: #b91c1c; --aviso-fondo: #fef2f2;
@@ -174,6 +174,14 @@ summary:hover { color: var(--acento); }
   .seccion-plegable > summary { padding: 12px; }
   .seccion-cuerpo { padding: 0 12px 12px; }
 }
+/* Pestaña Ramas */
+.ramas { display: grid; gap: 10px; max-width: 1180px; margin: 0 auto; padding: 12px 16px 48px; }
+.ramas-lienzo { overflow: auto; border: 1px solid var(--linea); border-radius: 8px; background: var(--linea-suave); padding: 12px; -webkit-overflow-scrolling: touch; touch-action: pan-x pan-y pinch-zoom; }
+.ramas-lienzo .grafo { width: max-content; }
+@media (max-width: 600px) {
+  .ramas { padding: 8px 8px 40px; }
+  .ramas-lienzo { padding: 8px; }
+}
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
 </style>
 </head>
@@ -184,6 +192,7 @@ summary:hover { color: var(--acento); }
   <nav class="pestanas" role="tablist" aria-label="Vistas">
     <a role="tab" id="pestana-avance" href="#avance" aria-controls="panel-avance" aria-selected="true">Avance</a>
     <a role="tab" id="pestana-roadmap" href="#roadmap" aria-controls="panel-roadmap" aria-selected="false" tabindex="-1">Roadmap</a>
+    <a role="tab" id="pestana-ramas" href="#ramas" aria-controls="panel-ramas" aria-selected="false" tabindex="-1">Ramas</a>
   </nav>
 </header>
 <p id="aviso" class="aviso" role="status" hidden></p>
@@ -213,6 +222,14 @@ summary:hover { color: var(--acento); }
   </section>
   <section id="panel-roadmap" role="tabpanel" aria-labelledby="pestana-roadmap" hidden>
     <div id="lector" class="lector"><p class="vacio">Cargando…</p></div>
+  </section>
+  <section id="panel-ramas" role="tabpanel" aria-labelledby="pestana-ramas" hidden>
+    <div class="ramas">
+      <p id="ramas-estado" class="estado">Cargando…</p>
+      <div id="ramas-lienzo" class="ramas-lienzo" tabindex="0" role="region" aria-label="Grafo de las ramas abiertas; se desplaza con las flechas" hidden>
+        <div id="ramas-grafo" class="grafo" role="img" aria-label="Grafo de las ramas abiertas"></div>
+      </div>
+    </div>
   </section>
 </main>
 <noscript><p class="vacio">El visor necesita JavaScript. El avance está en avance.md, junto a esta página.</p></noscript>
@@ -253,8 +270,8 @@ async function archivoGist(gist, nombre) {
 
 async function leer() {
   if (LOCAL) {
-    const [avance, lector] = await Promise.all([texto('avance.md?t=' + Date.now()), texto('lector.json?t=' + Date.now(), true)]);
-    return { avance, lector };
+    const [avance, lector, ramas] = await Promise.all([texto('avance.md?t=' + Date.now()), texto('lector.json?t=' + Date.now(), true), texto('ramas.md?t=' + Date.now(), true)]);
+    return { avance, lector, ramas };
   }
   if (!GIST) throw new Error('falta el gist: abre la página desde gist.githack.com o añade ?gist=<id>&usuario=<usuario>');
   // Primero la API (siempre la última versión y una sola consulta); si se agota su límite, el archivo en bruto.
@@ -263,12 +280,14 @@ async function leer() {
     if (respuesta.ok) {
       const gist = await respuesta.json();
       const avance = await archivoGist(gist, 'avance.md');
-      if (avance !== null) return { avance, lector: await archivoGist(gist, 'lector.json') };
+      if (avance !== null) return { avance, lector: await archivoGist(gist, 'lector.json'), ramas: await archivoGist(gist, 'ramas.md') };
     }
   } catch (error) { /* se intenta el archivo en bruto */ }
   const bruto = (nombre) => `https://gist.githubusercontent.com/${USUARIO}/${GIST}/raw/${nombre}?t=${Date.now()}`;
-  const [avance, lector] = await Promise.all([texto(bruto('avance.md')), texto(bruto('lector.json'), true).catch(() => null)]);
-  return { avance, lector };
+  const [avance, lector, ramas] = await Promise.all([
+    texto(bruto('avance.md')), texto(bruto('lector.json'), true).catch(() => null), texto(bruto('ramas.md'), true).catch(() => null),
+  ]);
+  return { avance, lector, ramas };
 }
 
 async function actualizar() {
@@ -301,11 +320,17 @@ async function actualizar() {
       }
       estado.avanceTexto = datos.avance;
     }
+    // Un gist sin ramas.md (publicado con 0.6.0) se lee como null: la pestaña dice que no hay datos.
+    if (datos.ramas !== estado.ramasTexto) {
+      await pintarRamas(datos.ramas);
+      estado.ramasTexto = datos.ramas;
+    }
   } catch (error) {
     aviso.textContent = 'No se pudo actualizar: ' + error.message + '. Se reintentará en dos minutos.';
     aviso.hidden = false;
     if (!estado.avance) $('estado').textContent = 'Sin datos del avance.';
     if (!estado.lector) $('lector').innerHTML = '<p class="vacio">Sin datos del roadmap.</p>';
+    if (estado.ramasTexto === undefined) $('ramas-estado').textContent = 'Sin datos de ramas.';
   }
 }
 
@@ -751,10 +776,46 @@ function mostrarAncla(hash, enfocar) {
   return true;
 }
 
+// ---------- Pestaña Ramas ----------
+
+// ramas.md lo compone Lynx: título, «Generado: …» y un bloque mermaid o la frase de vacío o sin datos.
+async function pintarRamas(md) {
+  const lienzo = $('ramas-lienzo');
+  const grafo = $('ramas-grafo');
+  if (md === null || md === undefined) {
+    $('ramas-estado').textContent = 'Sin datos de ramas: este avance no publica ramas.md.';
+    lienzo.hidden = true;
+    grafo.innerHTML = '';
+    return;
+  }
+  const fecha = (md.match(/^Generado:\s*(.+)$/m) || [])[1] || '';
+  const codigo = (md.match(/```mermaid\r?\n([\s\S]*?)\r?\n```/) || [])[1] || '';
+  const frase = md.replace(/```[\s\S]*?```/g, '').split('\n').map((l) => l.trim()).find((l) => l && !l.startsWith('#') && !/^Generado:/.test(l));
+  const resumen = codigo ? 'Rama base y ramas abiertas del roadmap.' : (frase || 'Sin datos de ramas.');
+  $('ramas-estado').innerHTML = (fecha ? `<strong>Generado: ${esc(fecha)}.</strong> ` : '') + esc(resumen);
+  lienzo.hidden = !codigo;
+  if (!codigo) { grafo.innerHTML = ''; return; }
+  grafo.setAttribute('aria-label', 'Grafo de ' + resumen);
+  try {
+    colocar(grafo, await dibujar(codigo));
+  } catch (error) {
+    grafo.innerHTML = `<p class="vacio" style="line-height:1.5">No se pudo dibujar el grafo de ramas: ${esc(error.message)}.</p>`;
+    return;
+  }
+  // Tamaño real, con desplazamiento: en el móvil las etiquetas siguen legibles.
+  const svg = grafo.querySelector('svg');
+  const caja = (svg.getAttribute('viewBox') || '').split(/[\s,]+/).map(Number);
+  if (caja.length === 4 && caja[2] > 0) {
+    svg.removeAttribute('style');
+    svg.setAttribute('width', Math.round(caja[2]));
+    svg.setAttribute('height', Math.round(caja[3]));
+  }
+}
+
 // ---------- Pestañas ----------
 
-const PESTANAS = ['avance', 'roadmap'];
-const desplazamiento = { avance: 0, roadmap: 0 };
+const PESTANAS = ['avance', 'roadmap', 'ramas'];
+const desplazamiento = { avance: 0, roadmap: 0, ramas: 0 };
 let activa = 'avance';
 
 function seleccionar(nombre, restaurar) {
@@ -774,7 +835,7 @@ function seleccionar(nombre, restaurar) {
 
 function desdeDireccion(enfocar) {
   const hash = location.hash;
-  if (hash === '#roadmap' || hash === '#avance') seleccionar(hash.slice(1), true);
+  if (PESTANAS.includes(hash.slice(1))) seleccionar(hash.slice(1), true);
   else if (hash.startsWith('#r-')) mostrarAncla(hash, enfocar);
 }
 window.addEventListener('hashchange', () => desdeDireccion(true));
