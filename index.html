@@ -1,0 +1,793 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>Avance del roadmap</title>
+<style>
+/* Visor de Lynx: pestaña «Avance» (grafo del plan de avance.md) y pestaña «Roadmap» (lector de lector.json). */
+:root {
+  --fondo: #f5f6f8; --superficie: #ffffff; --texto: #111827; --suave: #4b5563; --linea: #d4d8de; --linea-suave: #e7eaee;
+  --acento: #1d4ed8; --foco: #2563eb; --aviso: #b91c1c; --aviso-fondo: #fef2f2;
+  --ok-fondo: #dcfce7; --ok-texto: #14532d; --curso-fondo: #fef3c7; --curso-texto: #78350f;
+  --pend-fondo: #eef1f5; --pend-texto: #374151; --bloq-fondo: #fee2e2; --bloq-texto: #7f1d1d;
+  --otro-fondo: #ede9fe; --otro-texto: #4c1d95; --barra: #15803d;
+  --alto-cabecera: 96px;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --fondo: #0f1318; --superficie: #171c23; --texto: #e6e8eb; --suave: #a3abb6; --linea: #303946; --linea-suave: #252c36;
+    --acento: #93c5fd; --foco: #93c5fd; --aviso: #fca5a5; --aviso-fondo: #2d1517;
+    --ok-fondo: #12351f; --ok-texto: #bbf7d0; --curso-fondo: #3a2a0a; --curso-texto: #fde68a;
+    --pend-fondo: #232a34; --pend-texto: #d1d5db; --bloq-fondo: #3b1414; --bloq-texto: #fecaca;
+    --otro-fondo: #2a2140; --otro-texto: #ddd6fe; --barra: #4ade80;
+  }
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+@media (prefers-reduced-motion: no-preference) { html { scroll-behavior: smooth; } }
+body { margin: 0; background: var(--fondo); color: var(--texto); font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; overflow-wrap: anywhere; }
+h1, h2, h3 { line-height: 1.25; }
+a { color: var(--acento); }
+:focus-visible { outline: 3px solid var(--foco); outline-offset: 2px; border-radius: 4px; }
+[id] { scroll-margin-top: calc(var(--alto-cabecera) + 8px); }
+.oculto { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.saltar { position: absolute; left: 8px; top: -60px; z-index: 20; padding: 8px 12px; background: var(--superficie); border: 1px solid var(--linea); border-radius: 6px; }
+.saltar:focus { top: 8px; }
+button, select { font: inherit; color: var(--texto); background: var(--superficie); border: 1px solid var(--linea); border-radius: 6px; min-height: 36px; padding: 4px 10px; cursor: pointer; }
+button:hover, select:hover { border-color: var(--suave); }
+button[aria-pressed="true"] { border-color: var(--acento); color: var(--acento); font-weight: 600; }
+
+/* Cabecera y pestañas */
+.cabecera { position: sticky; top: 0; z-index: 10; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 16px; padding: 8px 16px 0; background: var(--superficie); border-bottom: 1px solid var(--linea); }
+.cabecera h1 { flex: 1 1 260px; min-width: 0; margin: 0 0 8px; font-size: 16px; font-weight: 650; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pestanas { display: flex; gap: 4px; flex: 0 0 auto; }
+.pestanas a { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 0 18px; color: var(--suave); text-decoration: none; font-weight: 600; border-bottom: 3px solid transparent; }
+.pestanas a:hover { color: var(--texto); }
+.pestanas a[aria-selected="true"] { color: var(--acento); border-bottom-color: var(--acento); }
+@media (max-width: 600px) {
+  .cabecera { padding: 6px 12px 0; }
+  .cabecera h1 { flex-basis: 100%; margin-bottom: 2px; font-size: 15px; }
+  .pestanas { flex: 1 1 100%; }
+  .pestanas a { flex: 1; }
+}
+.aviso { margin: 8px 16px 0; padding: 8px 12px; border-radius: 6px; background: var(--aviso-fondo); color: var(--aviso); }
+
+/* Chips de estado: color y, siempre, texto. */
+.chip { display: inline-flex; align-items: center; gap: 4px; padding: 1px 8px; border-radius: 999px; font-size: 13px; font-weight: 600; white-space: nowrap; background: var(--pend-fondo); color: var(--pend-texto); }
+.chip.ok { background: var(--ok-fondo); color: var(--ok-texto); }
+.chip.curso { background: var(--curso-fondo); color: var(--curso-texto); }
+.chip.bloq { background: var(--bloq-fondo); color: var(--bloq-texto); }
+.chip.otro { background: var(--otro-fondo); color: var(--otro-texto); }
+.chip.neutro { background: transparent; border: 1px solid var(--linea); color: var(--suave); font-weight: 500; }
+.ref { font-variant-numeric: tabular-nums; font-size: 13px; font-weight: 600; text-decoration: none; padding: 0 6px; border: 1px solid var(--linea); border-radius: 6px; white-space: nowrap; }
+
+/* Pestaña Avance */
+#panel-avance { display: flex; flex-direction: column; height: calc(100vh - var(--alto-cabecera)); height: calc(100dvh - var(--alto-cabecera)); }
+#panel-avance[hidden] { display: none; }
+.avance-cabecera { padding: 10px 16px 8px; display: grid; gap: 8px; }
+.estado { margin: 0; color: var(--suave); }
+.estado strong { color: var(--texto); }
+.controles { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.controles label { display: inline-flex; align-items: center; gap: 6px; color: var(--suave); }
+.controles select { max-width: min(60vw, 340px); }
+.zoom { display: inline-flex; align-items: center; gap: 4px; }
+.zoom button.icono { min-width: 36px; font-weight: 700; }
+.escala, .hora { color: var(--suave); font-size: 13px; font-variant-numeric: tabular-nums; }
+.leyenda { display: flex; flex-wrap: wrap; gap: 6px 14px; margin: 0; padding: 0; list-style: none; font-size: 13px; color: var(--suave); }
+.leyenda li { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; overflow-wrap: normal; }
+.muestra { display: inline-block; width: 16px; height: 12px; border-radius: 3px; border: 2px solid #94a3b8; }
+.lienzo { flex: 1; min-height: 240px; overflow: auto; margin: 0 16px 16px; border: 1px solid var(--linea); border-radius: 8px; background: var(--linea-suave); -webkit-overflow-scrolling: touch; touch-action: pan-x pan-y pinch-zoom; }
+.lienzo.arrastrando { cursor: grabbing; user-select: none; }
+.lienzo-interior { display: flex; min-width: 100%; min-height: 100%; width: max-content; padding: 12px; }
+/* El grafo trae sus colores de estado pensados sobre fondo claro: va siempre en una tarjeta blanca. */
+.grafo { margin: auto; background: #ffffff; color: #111827; border-radius: 8px; padding: 8px; line-height: 0; }
+.grafo svg { display: block; max-width: none !important; }
+/* La flecha que entra en una fase cruza su título: el título lleva un fondo que lo deja leer. */
+.titulos-subgraph foreignObject { overflow: visible; }
+.titulos-subgraph .nodeLabel p, .titulos-subgraph span.nodeLabel:not(:has(p)) { display: inline-block; margin: 0; padding: 1px 6px; border-radius: 4px; background: rgba(255, 255, 255, .85); }
+.tabla-fases { flex: 1; overflow: auto; margin: 0 16px 16px; }
+@media (max-width: 600px) {
+  .avance-cabecera { padding: 8px 12px 6px; }
+  .lienzo, .tabla-fases { margin: 0 8px 8px; }
+  .leyenda { gap: 4px 10px; }
+  .escala { display: none; }
+  .controles { gap: 6px; }
+  .controles label { flex: 1 1 100%; }
+  .controles select { flex: 1; max-width: none; min-width: 0; }
+  .controles button { padding: 4px 8px; }
+  .texto-boton { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+}
+table { border-collapse: collapse; width: 100%; background: var(--superficie); font-size: 14px; }
+th, td { text-align: left; padding: 6px 10px; border-bottom: 1px solid var(--linea); vertical-align: top; }
+th { font-weight: 600; color: var(--suave); }
+
+/* Pestaña Roadmap */
+.lector { display: grid; grid-template-columns: minmax(0, 1fr); max-width: 1180px; margin: 0 auto; padding: 12px 16px 48px; gap: 16px; }
+.indice { font-size: 14px; }
+.indice ul { list-style: none; margin: 0; padding: 0; }
+.indice > ul { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; }
+.indice a { display: block; padding: 6px 10px; border-radius: 6px; text-decoration: none; color: var(--texto); white-space: nowrap; border: 1px solid var(--linea); background: var(--superficie); }
+.indice a:hover { border-color: var(--suave); }
+.indice .cuenta { color: var(--suave); font-size: 12px; }
+.indice .fases-indice { display: none; }
+@media (min-width: 1000px) {
+  .lector { grid-template-columns: 230px minmax(0, 1fr); align-items: start; }
+  .indice { position: sticky; top: calc(var(--alto-cabecera) + 12px); max-height: calc(100vh - var(--alto-cabecera) - 24px); overflow: auto; }
+  .indice > ul { display: block; overflow: visible; }
+  .indice a { border: 0; background: none; padding: 4px 8px; white-space: normal; }
+  .indice a:hover { background: var(--linea-suave); }
+  .indice .fases-indice { display: block; margin: 0 0 4px 10px; border-left: 1px solid var(--linea); }
+  .indice .fases-indice a { font-size: 13px; color: var(--suave); }
+}
+.contenido { min-width: 0; display: grid; gap: 16px; }
+.tarjeta { background: var(--superficie); border: 1px solid var(--linea); border-radius: 10px; padding: 16px; }
+.tarjeta > :first-child { margin-top: 0; }
+.tarjeta > :last-child { margin-bottom: 0; }
+.resumen h2 { font-size: 21px; margin: 0 0 6px; }
+.etiqueta { display: block; font-size: 12px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--suave); margin-bottom: 2px; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0; }
+.progreso { margin-top: 12px; }
+.barra-avance { height: 10px; border-radius: 999px; background: var(--pend-fondo); overflow: hidden; border: 1px solid var(--linea); }
+.barra-avance > span { display: block; height: 100%; background: var(--barra); }
+.progreso p { margin: 6px 0 0; color: var(--suave); }
+.suave { color: var(--suave); }
+h2.seccion { font-size: 18px; margin: 8px 0 0; }
+.barra-seccion { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
+.fase { display: grid; gap: 10px; }
+.fase.en-curso { border-color: var(--acento); box-shadow: inset 4px 0 0 var(--acento); }
+.fase-cabecera { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+.fase h3 { margin: 0; font-size: 16px; flex: 1 1 220px; }
+.fase p { margin: 0; }
+details { border-radius: 8px; }
+summary { cursor: pointer; padding: 4px 0; }
+summary:hover { color: var(--acento); }
+.plegable { border-top: 1px solid var(--linea-suave); padding-top: 6px; }
+.plegable > summary { font-weight: 600; font-size: 14px; }
+.tareas { list-style: none; margin: 6px 0 0; padding: 0; display: grid; gap: 8px; }
+.tarea { padding: 8px 10px; border: 1px solid var(--linea-suave); border-radius: 8px; }
+.tarea-cabecera { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; }
+.tarea-cabecera strong { font-weight: 600; }
+.tarea p { margin: 4px 0 0; color: var(--suave); font-size: 14px; }
+.depende { margin-top: 4px; font-size: 13px; color: var(--suave); display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+.gate { padding: 8px 10px; border-radius: 8px; background: var(--linea-suave); }
+.gate p { font-size: 14px; }
+.seccion-plegable { background: var(--superficie); border: 1px solid var(--linea); border-radius: 10px; }
+.seccion-plegable > summary { padding: 12px 16px; list-style-position: inside; }
+.seccion-plegable > summary h2 { display: inline; font-size: 17px; margin: 0; }
+.seccion-plegable > summary .cuenta { color: var(--suave); font-weight: 500; margin-left: 4px; }
+.seccion-cuerpo { padding: 0 16px 16px; display: grid; gap: 10px; }
+.ficha { padding: 10px 12px; border: 1px solid var(--linea-suave); border-radius: 8px; }
+.ficha h3 { font-size: 15px; margin: 0 0 4px; display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: baseline; }
+.ficha p, .ficha ul, .ficha ol { margin: 4px 0 0; font-size: 14px; }
+.ficha ul, .ficha ol { padding-left: 20px; }
+.ficha details { margin-top: 6px; font-size: 14px; }
+.diagrama figure { margin: 8px 0 0; }
+.diagrama .dibujo { overflow: auto; background: #ffffff; color: #111827; border-radius: 8px; padding: 8px; border: 1px solid var(--linea); min-height: 48px; }
+.diagrama .dibujo svg { display: block; margin: 0 auto; }
+.diagrama figcaption { font-size: 13px; color: var(--suave); margin-top: 6px; }
+.vacio { padding: 24px 16px; color: var(--suave); }
+@media (max-width: 600px) {
+  .lector { padding: 8px 8px 40px; gap: 10px; }
+  .tarjeta { padding: 12px; }
+  .seccion-plegable > summary { padding: 12px; }
+  .seccion-cuerpo { padding: 0 12px 12px; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+</style>
+</head>
+<body>
+<a class="saltar" href="#contenido">Saltar al contenido</a>
+<header class="cabecera" id="cabecera">
+  <h1 id="titulo">Avance del roadmap</h1>
+  <nav class="pestanas" role="tablist" aria-label="Vistas">
+    <a role="tab" id="pestana-avance" href="#avance" aria-controls="panel-avance" aria-selected="true">Avance</a>
+    <a role="tab" id="pestana-roadmap" href="#roadmap" aria-controls="panel-roadmap" aria-selected="false" tabindex="-1">Roadmap</a>
+  </nav>
+</header>
+<p id="aviso" class="aviso" role="status" hidden></p>
+<main id="contenido" tabindex="-1">
+  <section id="panel-avance" role="tabpanel" aria-labelledby="pestana-avance">
+    <div class="avance-cabecera">
+      <p id="estado" class="estado">Cargando…</p>
+      <div class="controles">
+        <label for="fase">Fase <select id="fase"><option value="">Todas</option></select></label>
+        <span class="zoom" role="group" aria-label="Tamaño del grafo">
+          <button type="button" class="icono" id="alejar" aria-label="Alejar" title="Alejar (−)">−</button>
+          <button type="button" id="ajustar" aria-pressed="true" title="El grafo entero cabe (0)">Ajustar</button>
+          <button type="button" id="real" aria-pressed="false" title="Tamaño real, con desplazamiento">100 %</button>
+          <button type="button" class="icono" id="acercar" aria-label="Acercar" title="Acercar (+)">+</button>
+          <output id="escala" class="escala" aria-live="off"></output>
+        </span>
+        <button type="button" id="ver-tabla" aria-pressed="false">Tabla</button>
+        <button type="button" id="actualizar" title="Actualizar"><span aria-hidden="true">↻ </span><span class="texto-boton">Actualizar</span></button>
+        <span id="hora" class="hora"></span>
+      </div>
+      <ul id="leyenda" class="leyenda" aria-label="Leyenda del grafo"></ul>
+    </div>
+    <div id="lienzo" class="lienzo" tabindex="0" role="region" aria-label="Grafo del plan; se desplaza con las flechas y se amplía con + y −">
+      <div class="lienzo-interior"><div id="grafo" class="grafo" role="img" aria-label="Grafo del plan"></div></div>
+    </div>
+    <div id="tabla-fases" class="tabla-fases" hidden></div>
+  </section>
+  <section id="panel-roadmap" role="tabpanel" aria-labelledby="pestana-roadmap" hidden>
+    <div id="lector" class="lector"><p class="vacio">Cargando…</p></div>
+  </section>
+</main>
+<noscript><p class="vacio">El visor necesita JavaScript. El avance está en avance.md, junto a esta página.</p></noscript>
+<script type="module">
+const MERMAID = 'https://cdn.jsdelivr.net/npm/mermaid@11.4.1/dist/mermaid.esm.min.mjs';
+const REFRESCO_MS = 120000;
+const ESTRECHA = window.matchMedia('(max-width: 760px)');
+
+// Origen de los datos: ?fuente=local lee la carpeta de la página; si no, el gist de la dirección
+// (gist.githack.com/<usuario>/<id>/raw/index.html) o el de ?gist=<id>&usuario=<usuario>.
+const parametros = new URLSearchParams(location.search);
+const LOCAL = parametros.get('fuente') === 'local';
+const partes = location.pathname.split('/').filter(Boolean);
+const GIST = parametros.get('gist') || partes[1];
+const USUARIO = parametros.get('usuario') || partes[0];
+
+const $ = (id) => document.getElementById(id);
+// En pantallas estrechas se empieza a tamaño real (legible, con desplazamiento); «Ajustar» queda a un toque.
+const estado = { avance: null, lector: null, fase: null, faseElegida: false, modo: ESTRECHA.matches ? 'real' : 'ajustar', escala: 1, tamano: null, tabla: false, leido: 0 };
+
+const esc = (valor) => String(valor ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+const ancla = (id) => 'r-' + String(id).replace(/[^\w-]/g, '_');
+
+// ---------- Lectura ----------
+
+async function texto(url, opcional) {
+  const respuesta = await fetch(url, { cache: 'no-store' });
+  if (opcional && respuesta.status === 404) return null;
+  if (!respuesta.ok) throw new Error(`${url.split('?')[0].split('/').pop()}: respuesta ${respuesta.status}`);
+  return respuesta.text();
+}
+
+async function archivoGist(gist, nombre) {
+  const archivo = gist.files && gist.files[nombre];
+  if (!archivo) return null;
+  return archivo.truncated ? texto(archivo.raw_url) : archivo.content;
+}
+
+async function leer() {
+  if (LOCAL) {
+    const [avance, lector] = await Promise.all([texto('avance.md?t=' + Date.now()), texto('lector.json?t=' + Date.now(), true)]);
+    return { avance, lector };
+  }
+  if (!GIST) throw new Error('falta el gist: abre la página desde gist.githack.com o añade ?gist=<id>&usuario=<usuario>');
+  // Primero la API (siempre la última versión y una sola consulta); si se agota su límite, el archivo en bruto.
+  try {
+    const respuesta = await fetch(`https://api.github.com/gists/${GIST}`, { cache: 'no-store' });
+    if (respuesta.ok) {
+      const gist = await respuesta.json();
+      const avance = await archivoGist(gist, 'avance.md');
+      if (avance !== null) return { avance, lector: await archivoGist(gist, 'lector.json') };
+    }
+  } catch (error) { /* se intenta el archivo en bruto */ }
+  const bruto = (nombre) => `https://gist.githubusercontent.com/${USUARIO}/${GIST}/raw/${nombre}?t=${Date.now()}`;
+  const [avance, lector] = await Promise.all([texto(bruto('avance.md')), texto(bruto('lector.json'), true).catch(() => null)]);
+  return { avance, lector };
+}
+
+async function actualizar() {
+  const aviso = $('aviso');
+  try {
+    const datos = await leer();
+    estado.leido = Date.now();
+    $('hora').textContent = 'leído a las ' + new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+    aviso.hidden = true;
+    if (datos.lector !== estado.lectorTexto) {
+      estado.lectorTexto = datos.lector;
+      estado.lector = datos.lector ? JSON.parse(datos.lector) : null;
+      pintarLector();
+    }
+    if (datos.avance !== estado.avanceTexto) {
+      estado.avanceTexto = datos.avance;
+      estado.avance = leerAvance(datos.avance);
+      await pintarAvance();
+    }
+  } catch (error) {
+    aviso.textContent = 'No se pudo actualizar: ' + error.message + '. Se reintentará en dos minutos.';
+    aviso.hidden = false;
+    if (!estado.avance) $('estado').textContent = 'Sin datos del avance.';
+    if (!estado.lector) $('lector').innerHTML = '<p class="vacio">Sin datos del roadmap.</p>';
+  }
+}
+
+// ---------- avance.md ----------
+
+function leerAvance(md) {
+  const titulo = (md.match(/^# (.+)$/m) || [])[1] || '';
+  const seccion = (md.match(/^## Estado\s*$([\s\S]*?)(?=^## |(?![\s\S]))/m) || [])[1] || '';
+  const linea = seccion.match(/^\*\*Estado a ([^*]+?):\*\*\s*(.+)$/m);
+  const parrafo = seccion.split('\n').map((l) => l.trim()).find((l) => l && !l.startsWith('|') && !l.startsWith('<!--') && !/^Leyenda/i.test(l));
+  const filas = seccion.split('\n').filter((l) => /^\s*\|/.test(l)).map((l) => l.trim().replace(/^\||\|$/g, '').split('|').map((c) => c.trim()));
+  const tabla = filas.filter((fila) => !fila.every((c) => /^:?-+:?$/.test(c)));
+  const codigo = (md.match(/```mermaid\r?\n([\s\S]*?)\r?\n```/) || [])[1] || '';
+  return { titulo, fecha: linea ? linea[1] : '', resumen: linea ? linea[2] : (parrafo || '').replace(/\*\*/g, ''), tabla, grafo: leerGrafo(codigo) };
+}
+
+// Un bloque por subgraph de primer nivel (las fases y la leyenda); el resto, líneas sueltas.
+function leerGrafo(codigo) {
+  const lineas = codigo.split(/\r?\n/);
+  const piezas = [];
+  let bloque = null;
+  let profundidad = 0;
+  for (const linea of lineas) {
+    const limpia = linea.trim();
+    const abre = /^subgraph\b/.test(limpia);
+    if (abre && profundidad === 0) {
+      const cabecera = limpia.match(/^subgraph\s+([A-Za-z_][\w-]*)\s*(?:\["([^"]*)"\]|\[([^\]]*)\])?/) || [];
+      bloque = { tipo: 'bloque', id: cabecera[1] || '', etiqueta: cabecera[2] || cabecera[3] || cabecera[1] || '', lineas: [linea] };
+      piezas.push(bloque);
+      profundidad = 1;
+      continue;
+    }
+    if (bloque) {
+      bloque.lineas.push(linea);
+      if (abre) profundidad++;
+      else if (limpia === 'end' && --profundidad === 0) bloque = null;
+      continue;
+    }
+    const tipo = /^%%\{/.test(limpia) ? 'directiva' : /^classDef\s/.test(limpia) ? 'classDef' : /^class\s/.test(limpia) ? 'class' : /^style\s/.test(limpia) ? 'style'
+      : /^linkStyle\s/.test(limpia) ? 'linkStyle' : /^(flowchart|graph)\b/.test(limpia) ? 'cabecera' : 'otra';
+    piezas.push({ tipo, linea });
+  }
+  const estilos = {};
+  for (const pieza of piezas) {
+    const definicion = pieza.tipo === 'classDef' && pieza.linea.trim().match(/^classDef\s+([\w-]+)\s+(.+?);?$/);
+    if (definicion) estilos[definicion[1]] = definicion[2];
+  }
+  const leyendaBloque = piezas.find((p) => p.tipo === 'bloque' && /^leyenda$/i.test(p.id));
+  const leyenda = [];
+  for (const linea of leyendaBloque ? leyendaBloque.lineas : []) {
+    const nodo = linea.trim().match(/^[\w-]+\s*\["([^"]*)"\]:::([\w-]+)/);
+    if (nodo) leyenda.push({ texto: nodo[1], estilo: estilos[nodo[2]] || '' });
+  }
+  return { piezas, leyenda, fases: piezas.filter((p) => p.tipo === 'bloque' && p !== leyendaBloque) };
+}
+
+const RESERVADAS = new Set(['subgraph', 'end', 'direction', 'flowchart', 'graph', 'TD', 'TB', 'LR', 'RL', 'BT', 'click', 'class', 'classDef', 'style']);
+function identificadores(lineas) {
+  const ids = new Set();
+  for (const linea of lineas) {
+    const limpia = linea.replace(/"[^"]*"/g, '').replace(/\|[^|]*\|/g, '').replace(/:::[\w-]+/g, '').replace(/%%.*$/, '');
+    for (const id of limpia.match(/[A-Za-z_][\w-]*/g) || []) if (!RESERVADAS.has(id)) ids.add(id);
+  }
+  return ids;
+}
+
+// Fuente mermaid de una fase (o de todas), sin la leyenda: los estados se explican en los chips.
+function fuenteGrafo(grafo, fase) {
+  const bloques = fase ? grafo.fases.filter((b) => b.id === fase) : grafo.fases;
+  const lineasBloques = bloques.flatMap((b) => b.lineas);
+  const sueltas = fase ? [] : grafo.piezas.filter((p) => p.tipo === 'otra').map((p) => p.linea);
+  const ids = identificadores([...lineasBloques, ...sueltas]);
+  bloques.forEach((b) => ids.add(b.id));
+  const salida = [];
+  for (const pieza of grafo.piezas) {
+    if (pieza.tipo === 'bloque') { if (bloques.includes(pieza)) salida.push(...pieza.lineas); continue; }
+    const limpia = pieza.linea.trim();
+    if (pieza.tipo === 'directiva' || pieza.tipo === 'cabecera' || pieza.tipo === 'classDef') salida.push(pieza.linea);
+    else if (pieza.tipo === 'otra' && !fase) salida.push(pieza.linea);
+    else if (pieza.tipo === 'linkStyle' && !fase) salida.push(pieza.linea);
+    else if (pieza.tipo === 'class') {
+      const partes = limpia.match(/^class\s+(\S+)\s+(.+)$/);
+      const lista = partes ? partes[1].split(',').filter((id) => ids.has(id)) : [];
+      if (lista.length) salida.push(`  class ${lista.join(',')} ${partes[2]}`);
+    } else if (pieza.tipo === 'style') {
+      const id = (limpia.match(/^style\s+([\w-]+)/) || [])[1];
+      if (ids.has(id)) salida.push(pieza.linea);
+    }
+  }
+  if (!salida.some((l) => /^\s*(flowchart|graph)\b/.test(l))) salida.splice(salida.filter((l) => /^\s*%%\{/.test(l)).length, 0, 'flowchart TD');
+  return salida.join('\n');
+}
+
+// ---------- mermaid ----------
+
+let mermaidListo = null;
+let cola = Promise.resolve();
+let contador = 0;
+function cargarMermaid() {
+  if (!mermaidListo) {
+    mermaidListo = import(MERMAID).then(({ default: mermaid }) => {
+      // Sin opciones de flowchart: manda la directiva %%{init}%% de cada bloque.
+      mermaid.initialize({ startOnLoad: false, securityLevel: 'strict', theme: 'default', fontFamily: 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif' });
+      return mermaid;
+    }).catch((error) => { mermaidListo = null; throw new Error('no se pudo cargar mermaid (' + error.message + ')'); });
+  }
+  return mermaidListo;
+}
+function dibujar(codigo) {
+  const turno = cola.then(async () => (await cargarMermaid()).render('m' + (++contador), codigo));
+  cola = turno.catch(() => {});
+  return turno.then((r) => r.svg);
+}
+
+// mermaid pinta las aristas encima de los títulos de los subgraph: los títulos pasan a la última capa.
+function colocar(destino, svg) {
+  destino.innerHTML = svg;
+  for (const grupo of destino.querySelectorAll('g.clusters')) {
+    const raiz = grupo.parentNode;
+    const titulos = [...grupo.querySelectorAll(':scope > g.cluster > g.cluster-label')].filter((t) => !t.parentNode.hasAttribute('transform'));
+    if (grupo.hasAttribute('transform') || !titulos.length) continue;
+    const capa = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    capa.setAttribute('class', 'titulos-subgraph');
+    titulos.forEach((titulo) => capa.appendChild(titulo));
+    raiz.appendChild(capa);
+  }
+}
+
+// ---------- Pestaña Avance ----------
+
+function estiloMuestra(definicion) {
+  const css = [];
+  for (const parte of definicion.split(',')) {
+    const [clave, valor] = parte.split(':').map((s) => s && s.trim());
+    if (!valor || !/^[#\w .%-]+$/.test(valor)) continue;
+    if (clave === 'fill') css.push('background:' + valor);
+    if (clave === 'stroke') css.push('border-color:' + valor);
+    if (clave === 'stroke-dasharray') css.push('border-style:dashed');
+  }
+  return css.join(';');
+}
+
+function faseInicial(avance) {
+  const ids = avance.grafo.fases.map((f) => f.id);
+  const enCurso = (estado.lector && estado.lector.progress && estado.lector.progress.current_phase)
+    || (avance.resumen.match(/fase en curso (\S+?)[\s·.,]/) || [])[1]
+    || (avance.grafo.fases.find((f) => /en curso/i.test(f.etiqueta)) || {}).id;
+  // En el móvil y en el PC se empieza por la fase en curso: el grafo entero sólo se lee ampliándolo.
+  return ids.includes(enCurso) ? enCurso : '';
+}
+
+async function pintarAvance() {
+  const avance = estado.avance;
+  const titulo = avance.titulo.replace(/^Avance:\s*/, '') || (estado.lector && estado.lector.roadmap.title) || 'Avance del roadmap';
+  $('titulo').textContent = titulo;
+  document.title = titulo;
+  $('estado').innerHTML = avance.fecha ? `<strong>Estado a ${esc(avance.fecha)}:</strong> ${esc(avance.resumen)}` : esc(avance.resumen || 'Sin avance registrado.');
+  $('leyenda').innerHTML = avance.grafo.leyenda.map((l) => `<li><span class="muestra" style="${esc(estiloMuestra(l.estilo))}" aria-hidden="true"></span>${esc(l.texto)}</li>`).join('');
+  const selector = $('fase');
+  if (!estado.faseElegida) estado.fase = faseInicial(avance);
+  if (estado.fase && !avance.grafo.fases.some((f) => f.id === estado.fase)) estado.fase = '';
+  selector.innerHTML = '<option value="">Todas</option>' + avance.grafo.fases.map((f) => `<option value="${esc(f.id)}">${esc(f.etiqueta)}</option>`).join('');
+  selector.value = estado.fase;
+  pintarTabla(avance);
+  await pintarGrafo();
+}
+
+function pintarTabla(avance) {
+  const [cabecera, ...filas] = avance.tabla;
+  $('tabla-fases').innerHTML = cabecera
+    ? `<table><caption class="oculto">Fases del plan</caption><thead><tr>${cabecera.map((c) => `<th scope="col">${esc(c)}</th>`).join('')}</tr></thead>`
+      + `<tbody>${filas.map((f) => `<tr>${f.map((c) => `<td>${esc(c)}</td>`).join('')}</tr>`).join('')}</tbody></table>`
+    : '<p class="vacio">avance.md no trae la tabla de fases.</p>';
+}
+
+async function pintarGrafo() {
+  const avance = estado.avance;
+  const grafo = $('grafo');
+  const fase = avance.grafo.fases.find((f) => f.id === estado.fase);
+  grafo.setAttribute('aria-label', `Grafo del plan${fase ? ', fase ' + fase.etiqueta : ''}. ${$('estado').textContent}`);
+  if (!avance.grafo.piezas.length) { grafo.innerHTML = '<p class="vacio">avance.md no trae un bloque mermaid.</p>'; return; }
+  try {
+    colocar(grafo, await dibujar(fuenteGrafo(avance.grafo, estado.fase)));
+  } catch (error) {
+    grafo.innerHTML = `<p class="vacio" style="line-height:1.5">No se pudo dibujar el grafo: ${esc(error.message)}. Pulsa «Tabla» para verlo en texto.</p>`;
+    estado.tamano = null;
+    return;
+  }
+  const svg = grafo.querySelector('svg');
+  const caja = (svg.getAttribute('viewBox') || '').split(/[\s,]+/).map(Number);
+  estado.tamano = caja.length === 4 && caja[2] > 0 ? { ancho: caja[2], alto: caja[3] } : svg.getBBox();
+  svg.removeAttribute('style');
+  if (estado.modo === 'ajustar') ajustar(); else escalar(estado.escala);
+}
+
+function escalar(escala) {
+  const svg = $('grafo').querySelector('svg');
+  estado.escala = Math.min(4, Math.max(0.05, escala));
+  $('escala').textContent = Math.round(estado.escala * 100) + ' %';
+  $('ajustar').setAttribute('aria-pressed', String(estado.modo === 'ajustar'));
+  $('real').setAttribute('aria-pressed', String(estado.modo === 'real'));
+  if (!svg || !estado.tamano) return;
+  svg.setAttribute('width', Math.round(estado.tamano.ancho * estado.escala));
+  svg.setAttribute('height', Math.round(estado.tamano.alto * estado.escala));
+}
+
+// Ajustar: el grafo entero cabe en el lienzo, sin agrandarlo por encima de su tamaño real.
+function ajustar() {
+  estado.modo = 'ajustar';
+  const lienzo = $('lienzo');
+  if (!estado.tamano || !lienzo.clientWidth) return escalar(estado.escala);
+  const ancho = lienzo.clientWidth - 40;
+  const alto = lienzo.clientHeight - 40;
+  escalar(Math.min(1, ancho / estado.tamano.ancho, alto / estado.tamano.alto));
+}
+
+function ampliar(factor) {
+  const lienzo = $('lienzo');
+  const centroX = (lienzo.scrollLeft + lienzo.clientWidth / 2) / Math.max(1, lienzo.scrollWidth);
+  const centroY = (lienzo.scrollTop + lienzo.clientHeight / 2) / Math.max(1, lienzo.scrollHeight);
+  estado.modo = 'manual';
+  escalar(estado.escala * factor);
+  lienzo.scrollLeft = centroX * lienzo.scrollWidth - lienzo.clientWidth / 2;
+  lienzo.scrollTop = centroY * lienzo.scrollHeight - lienzo.clientHeight / 2;
+}
+
+$('fase').addEventListener('change', (evento) => {
+  estado.fase = evento.target.value;
+  estado.faseElegida = true;
+  estado.modo = 'ajustar';
+  pintarGrafo();
+});
+$('ajustar').addEventListener('click', ajustar);
+$('real').addEventListener('click', () => { estado.modo = 'real'; escalar(1); });
+$('acercar').addEventListener('click', () => ampliar(1.25));
+$('alejar').addEventListener('click', () => ampliar(0.8));
+$('actualizar').addEventListener('click', actualizar);
+$('ver-tabla').addEventListener('click', (evento) => {
+  estado.tabla = !estado.tabla;
+  evento.currentTarget.setAttribute('aria-pressed', String(estado.tabla));
+  $('tabla-fases').hidden = !estado.tabla;
+  $('lienzo').hidden = estado.tabla;
+  if (!estado.tabla && estado.modo === 'ajustar') ajustar();
+});
+$('lienzo').addEventListener('keydown', (evento) => {
+  if (evento.ctrlKey || evento.metaKey || evento.altKey) return;
+  if (evento.key === '+' || evento.key === '=') ampliar(1.25);
+  else if (evento.key === '-') ampliar(0.8);
+  else if (evento.key === '0') ajustar();
+  else return;
+  evento.preventDefault();
+});
+// Con el ratón, el grafo se arrastra; en pantallas táctiles se desplaza y se amplía con los dedos.
+(() => {
+  const lienzo = $('lienzo');
+  let inicio = null;
+  lienzo.addEventListener('pointerdown', (e) => {
+    if (e.pointerType !== 'mouse' || e.button !== 0) return;
+    inicio = { x: e.clientX, y: e.clientY, izquierda: lienzo.scrollLeft, arriba: lienzo.scrollTop };
+    lienzo.setPointerCapture(e.pointerId);
+    lienzo.classList.add('arrastrando');
+  });
+  lienzo.addEventListener('pointermove', (e) => {
+    if (!inicio) return;
+    lienzo.scrollLeft = inicio.izquierda - (e.clientX - inicio.x);
+    lienzo.scrollTop = inicio.arriba - (e.clientY - inicio.y);
+  });
+  const soltar = () => { inicio = null; lienzo.classList.remove('arrastrando'); };
+  lienzo.addEventListener('pointerup', soltar);
+  lienzo.addEventListener('pointercancel', soltar);
+})();
+
+// ---------- Pestaña Roadmap ----------
+
+const ESTADOS = {
+  complete: ['ok', '✓', 'Completada'], completed: ['ok', '✓', 'Completada'], active: ['curso', '●', 'En curso'],
+  pending: ['pend', '○', 'Pendiente'], planned: ['pend', '○', 'Planificada'], blocked: ['bloq', '!', 'Bloqueada'],
+  deferred: ['otro', '–', 'Aplazada'], cancelled: ['otro', '×', 'Cancelada'],
+  accepted: ['ok', '✓', 'Aceptada'], proposed: ['curso', '?', 'Propuesta'], superseded: ['otro', '–', 'Sustituida'], rejected: ['otro', '×', 'Rechazada'],
+};
+const COMPLEJIDAD = { simple: 'Simple', intermediate: 'Intermedia', complex: 'Compleja', very_complex: 'Muy compleja' };
+const TIPO_DIAGRAMA = { flow: 'Flujo', component: 'Componentes', sequence: 'Secuencia', data: 'Datos', ui: 'Interfaz', class: 'Clases', architecture: 'Arquitectura' };
+
+function chip(status, gate) {
+  if (!status) return '';
+  const [clase, signo, texto] = ESTADOS[status] || ['neutro', '', status];
+  const etiqueta = gate && (status === 'complete' || status === 'completed') ? 'En verde' : texto;
+  return `<span class="chip ${clase}"><span aria-hidden="true">${signo}</span>${esc(etiqueta)}</span>`;
+}
+const enlace = (id) => `<a class="ref" href="#${ancla(id)}">${esc(id)}</a>`;
+const lista = (items, ordenada) => items && items.length ? `<${ordenada ? 'ol' : 'ul'}>${items.map((i) => `<li>${esc(i)}</li>`).join('')}</${ordenada ? 'ol' : 'ul'}>` : '';
+const depende = (ids) => ids && ids.length ? `<div class="depende">Depende de ${ids.map(enlace).join(' ')}</div>` : '';
+
+function resumen(datos) {
+  const r = datos.roadmap;
+  const p = datos.progress || {};
+  const porcentaje = p.tasks_total ? Math.round((100 * p.tasks_done) / p.tasks_total) : 0;
+  const actual = (datos.phases || []).find((f) => f.id === p.current_phase);
+  return `<section class="tarjeta resumen" id="r-resumen" aria-labelledby="r-resumen-titulo">
+    <h2 id="r-resumen-titulo">${esc(r.title || r.id)}</h2>
+    ${r.summary ? `<p>${esc(r.summary)}</p>` : ''}
+    <div class="chips">${chip(r.status)}${r.priority != null ? `<span class="chip neutro">Prioridad ${esc(r.priority)}</span>` : ''}${r.complejidad ? `<span class="chip neutro">Complejidad: ${esc(COMPLEJIDAD[r.complejidad] || r.complejidad)}</span>` : ''}${r.updated_at ? `<span class="chip neutro">Actualizado el ${esc(r.updated_at)}</span>` : ''}</div>
+    ${r.goal ? `<p><span class="etiqueta">Objetivo</span>${esc(r.goal)}</p>` : ''}
+    <div class="progreso">
+      <div class="barra-avance" role="progressbar" aria-label="Tareas completadas" aria-valuemin="0" aria-valuemax="${p.tasks_total || 0}" aria-valuenow="${p.tasks_done || 0}" aria-valuetext="${porcentaje} %"><span style="width:${porcentaje}%"></span></div>
+      <p>${esc(p.tasks_done || 0)} de ${esc(p.tasks_total || 0)} tareas completadas (${porcentaje} %) · ${esc(p.phases_done || 0)} de ${esc(p.phases_total || 0)} fases${actual ? ` · en curso: ${enlace(actual.id)} ${esc(actual.title)}` : ''}</p>
+    </div>
+  </section>`;
+}
+
+function fase(f, actual) {
+  const tareas = f.tasks || [];
+  const hechas = tareas.filter((t) => t.status === 'complete' || t.status === 'completed').length;
+  const cerrada = f.status === 'complete' || f.status === 'completed';
+  return `<article class="tarjeta fase${f.id === actual ? ' en-curso' : ''}" id="${ancla(f.id)}" aria-labelledby="${ancla(f.id)}-titulo">
+    <div class="fase-cabecera">${chip(f.status)}<h3 id="${ancla(f.id)}-titulo">${esc(f.id)} · ${esc(f.title)}</h3></div>
+    ${f.objective ? `<p>${esc(f.objective)}</p>` : ''}
+    ${depende(f.depends_on)}
+    ${f.deliverables && f.deliverables.length ? `<details class="plegable" data-plegado><summary>Entregables (${f.deliverables.length})</summary><div class="ficha">${lista(f.deliverables)}</div></details>` : ''}
+    ${tareas.length ? `<details class="plegable" id="${ancla(f.id)}-tareas" ${cerrada ? 'data-plegado' : 'data-abierto'}><summary>Tareas · ${hechas} de ${tareas.length} hechas</summary><ul class="tareas">${tareas.map((t) => `
+      <li class="tarea" id="${ancla(t.id)}"><div class="tarea-cabecera">${chip(t.status)}<strong>${esc(t.id)}</strong> <span>${esc(t.title)}</span></div>
+      ${t.intent ? `<p>${esc(t.intent)}</p>` : ''}${depende(t.depends_on)}</li>`).join('')}</ul></details>` : ''}
+    ${(f.gates || []).map((g) => `<div class="gate" id="${ancla(g.id)}"><div class="tarea-cabecera">${chip(g.status, true)}<strong>Gate ${esc(g.id)}</strong></div>
+      ${g.expected ? `<p><span class="etiqueta">Se espera</span>${esc(g.expected)}</p>` : ''}
+      ${g.evidence && g.evidence.length ? `<details data-plegado><summary>Evidencia (${g.evidence.length})</summary><div class="ficha">${lista(g.evidence)}</div></details>` : ''}</div>`).join('')}
+  </article>`;
+}
+
+// Secciones plegables del lector: [ancla, título, elementos, ficha de cada elemento].
+const SECCIONES = [
+  ['requisitos', 'Requisitos', (d) => d.requirements, (x) => `<p>${esc(x.prose)}</p>`],
+  ['decisiones', 'Decisiones', (d) => d.decisions, (x) => `<p>${esc(x.decision)}</p>${x.rationale || (x.consequences || []).length ? `<details><summary>Motivo y consecuencias</summary>${x.rationale ? `<p><span class="etiqueta">Motivo</span>${esc(x.rationale)}</p>` : ''}${(x.consequences || []).length ? `<span class="etiqueta">Consecuencias</span>${lista(x.consequences)}` : ''}</details>` : ''}`],
+  ['contratos', 'Contratos', (d) => d.contracts, (x) => `<p>${esc(x.rule)}</p>`],
+  ['casos', 'Casos de uso', (d) => d.use_cases, (x) => `${x.actor ? `<p><span class="etiqueta">Actor</span>${esc(x.actor)}</p>` : ''}<p>${esc(x.summary)}</p>${(x.main_flow || []).length ? `<details><summary>Flujo principal</summary>${lista(x.main_flow, true)}</details>` : ''}`],
+  ['resultados', 'Resultados', (d) => d.outcomes, (x) => `<p>${esc(x.human_result)}</p>`],
+  ['diseno', 'Diseño', (d) => d.blueprints, (x) => `<p>${esc(x.purpose)}</p>`],
+  ['diagramas', 'Diagramas', (d) => d.diagrams, null],
+  ['no-objetivos', 'No objetivos', (d) => (d.roadmap.non_goals || []), null],
+];
+
+function ficha(x, cuerpo) {
+  return `<article class="ficha" id="${ancla(x.id)}"><h3>${esc(x.id)} <span>${esc(x.title || '')}</span>${x.status ? chip(x.status) : ''}</h3>${cuerpo(x)}</article>`;
+}
+
+function diagrama(x) {
+  const clases = [...(x.mermaid || '').matchAll(/classDef\s+([\w-]+)\s+(\S+)/g)];
+  return `<article class="ficha diagrama" id="${ancla(x.id)}"><h3>${esc(x.id)} <span>${esc(x.title || '')}</span>${x.kind ? `<span class="chip neutro">${esc(TIPO_DIAGRAMA[x.kind] || x.kind)}</span>` : ''}</h3>
+    ${x.description ? `<p>${esc(x.description)}</p>` : ''}
+    <figure><div class="dibujo" role="img" aria-label="${esc(x.title || x.id)}: ${esc(x.description || '')}" data-mermaid="${esc(x.mermaid || '')}"></div>
+    ${clases.length ? `<figcaption><ul class="leyenda" aria-label="Estados de los nodos">${clases.map((c) => `<li><span class="muestra" style="${esc(estiloMuestra(c[2]))}" aria-hidden="true"></span>${esc(c[1])}</li>`).join('')}</ul></figcaption>` : ''}</figure></article>`;
+}
+
+function pintarLector() {
+  const contenedor = $('lector');
+  const datos = estado.lector;
+  if (!datos) {
+    contenedor.innerHTML = '<p class="vacio">Este avance todavía no publica el lector del roadmap (lector.json).</p>';
+    return;
+  }
+  // Conserva lo que la persona ha desplegado o plegado al releer los datos.
+  const previos = new Map([...contenedor.querySelectorAll('details[id]')].map((d) => [d.id, d.open]));
+  const primera = !contenedor.querySelector('.contenido');
+  const actual = datos.progress && datos.progress.current_phase;
+  const secciones = SECCIONES.map(([id, titulo, elementos, cuerpo]) => [id, titulo, elementos(datos) || [], cuerpo]).filter((s) => s[2].length);
+  contenedor.innerHTML = `
+    <nav class="indice" aria-label="Índice del roadmap"><ul>
+      <li><a href="#r-resumen">Resumen</a></li>
+      <li><a href="#r-fases">Fases <span class="cuenta">${(datos.phases || []).length}</span></a>
+        <ul class="fases-indice">${(datos.phases || []).map((f) => `<li><a href="#${ancla(f.id)}"><span class="oculto">${esc((ESTADOS[f.status] || [])[2] || f.status || '')}: </span><span aria-hidden="true">${(ESTADOS[f.status] || [])[1] || ''}</span> ${esc(f.id)} ${esc(f.title)}</a></li>`).join('')}</ul></li>
+      ${secciones.map(([id, titulo, elementos]) => `<li><a href="#r-${id}">${esc(titulo)} <span class="cuenta">${elementos.length}</span></a></li>`).join('')}
+    </ul></nav>
+    <div class="contenido">
+      ${resumen(datos)}
+      <section id="r-fases" aria-labelledby="r-fases-titulo" class="fase" style="gap:12px">
+        <div class="barra-seccion"><h2 class="seccion" id="r-fases-titulo">Fases</h2>
+          <span><button type="button" data-desplegar="true">Desplegar todo</button> <button type="button" data-desplegar="false">Plegar todo</button></span></div>
+        ${(datos.phases || []).map((f) => fase(f, actual)).join('')}
+      </section>
+      ${secciones.map(([id, titulo, elementos, cuerpo]) => `<details class="seccion-plegable" id="r-${id}" data-seccion>
+        <summary><h2>${esc(titulo)}</h2><span class="cuenta">${elementos.length}</span></summary>
+        <div class="seccion-cuerpo">${id === 'diagramas' ? elementos.map(diagrama).join('') : id === 'no-objetivos' ? `<div class="ficha">${lista(elementos)}</div>` : elementos.map((x) => ficha(x, cuerpo)).join('')}</div>
+      </details>`).join('')}
+    </div>`;
+  // En el móvil todo empieza plegado salvo resumen y fases; en el PC las secciones empiezan desplegadas.
+  for (const detalle of contenedor.querySelectorAll('details')) {
+    if (detalle.id && previos.has(detalle.id)) detalle.open = previos.get(detalle.id);
+    else if (detalle.hasAttribute('data-abierto')) detalle.open = true;
+    else if (detalle.hasAttribute('data-seccion')) detalle.open = primera ? !ESTRECHA.matches : false;
+    detalle.addEventListener('toggle', () => { if (detalle.open) dibujarDiagramas(detalle); });
+    if (detalle.open) dibujarDiagramas(detalle);
+  }
+  if (primera && location.hash.startsWith('#r-')) mostrarAncla(location.hash, false);
+}
+
+// Los diagramas del roadmap se dibujan al desplegarse su sección.
+function dibujarDiagramas(raiz) {
+  for (const destino of raiz.querySelectorAll('.dibujo[data-mermaid]')) {
+    const codigo = destino.getAttribute('data-mermaid');
+    destino.removeAttribute('data-mermaid');
+    dibujar(codigo).then((svg) => {
+      colocar(destino, svg);
+      // En pantallas estrechas el diagrama no se encoge hasta ser ilegible: se desplaza en horizontal.
+      const ancho = Number(((destino.querySelector('svg') || {}).getAttribute?.('viewBox') || '').split(/[\s,]+/)[2]);
+      if (ancho > 0) destino.querySelector('svg').style.minWidth = Math.min(ancho, 560) + 'px';
+    }).catch((error) => {
+      destino.innerHTML = `<p class="vacio" style="color:#374151">No se pudo dibujar el diagrama: ${esc(error.message)}</p>`;
+    });
+  }
+}
+
+$('lector').addEventListener('click', (evento) => {
+  const boton = evento.target.closest('[data-desplegar]');
+  if (boton) {
+    const abrir = boton.getAttribute('data-desplegar') === 'true';
+    for (const detalle of $('r-fases').querySelectorAll('details')) detalle.open = abrir;
+    return;
+  }
+  // Volver a seguir el mismo enlace no emite hashchange: se despliega igualmente su destino.
+  const enlaceInterno = evento.target.closest('a[href^="#r-"]');
+  if (enlaceInterno && enlaceInterno.hash === location.hash && !evento.ctrlKey && !evento.metaKey && !evento.shiftKey && evento.button === 0) {
+    evento.preventDefault();
+    mostrarAncla(enlaceInterno.hash, true);
+  }
+});
+
+function mostrarAncla(hash, enfocar) {
+  const destino = document.getElementById(decodeURIComponent(hash.slice(1)));
+  if (!destino || !$('panel-roadmap').contains(destino)) return false;
+  seleccionar('roadmap', false);
+  for (let nodo = destino; nodo; nodo = nodo.parentElement) if (nodo.tagName === 'DETAILS') nodo.open = true;
+  destino.scrollIntoView({ block: 'start' });
+  if (enfocar) {
+    if (!destino.hasAttribute('tabindex')) destino.setAttribute('tabindex', '-1');
+    destino.focus({ preventScroll: true });
+  }
+  return true;
+}
+
+// ---------- Pestañas ----------
+
+const PESTANAS = ['avance', 'roadmap'];
+const desplazamiento = { avance: 0, roadmap: 0 };
+let activa = 'avance';
+
+function seleccionar(nombre, restaurar) {
+  if (nombre !== activa) desplazamiento[activa] = window.scrollY;
+  for (const otra of PESTANAS) {
+    const sel = otra === nombre;
+    const pestana = $('pestana-' + otra);
+    pestana.setAttribute('aria-selected', String(sel));
+    pestana.tabIndex = sel ? 0 : -1;
+    $('panel-' + otra).hidden = !sel;
+  }
+  const cambia = nombre !== activa;
+  activa = nombre;
+  if (nombre === 'avance' && estado.modo === 'ajustar') requestAnimationFrame(ajustar);
+  if (cambia && restaurar) window.scrollTo(0, desplazamiento[nombre]);
+}
+
+function desdeDireccion(enfocar) {
+  const hash = location.hash;
+  if (hash === '#roadmap' || hash === '#avance') seleccionar(hash.slice(1), true);
+  else if (hash.startsWith('#r-')) mostrarAncla(hash, enfocar);
+}
+window.addEventListener('hashchange', () => desdeDireccion(true));
+
+$('cabecera').querySelector('[role="tablist"]').addEventListener('keydown', (evento) => {
+  const indice = PESTANAS.indexOf(activa);
+  const destino = { ArrowRight: indice + 1, ArrowLeft: indice - 1, Home: 0, End: PESTANAS.length - 1 }[evento.key];
+  if (evento.key === ' ' || evento.key === 'Spacebar') {
+    evento.preventDefault();
+    evento.target.click();
+    return;
+  }
+  if (destino === undefined) return;
+  evento.preventDefault();
+  const nombre = PESTANAS[(destino + PESTANAS.length) % PESTANAS.length];
+  history.replaceState(null, '', '#' + nombre);
+  seleccionar(nombre, true);
+  $('pestana-' + nombre).focus();
+});
+
+// La altura de la cabecera fija el alto del lienzo y el margen de los anclajes.
+new ResizeObserver(([entrada]) => {
+  document.documentElement.style.setProperty('--alto-cabecera', Math.ceil(entrada.target.getBoundingClientRect().height) + 'px');
+  if (activa === 'avance' && estado.modo === 'ajustar') ajustar();
+}).observe($('cabecera'));
+window.addEventListener('resize', () => { if (activa === 'avance' && estado.modo === 'ajustar') ajustar(); });
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible' && Date.now() - estado.leido > REFRESCO_MS) actualizar();
+});
+
+desdeDireccion(false);
+actualizar();
+setInterval(actualizar, REFRESCO_MS);
+</script>
+</body>
+</html>
