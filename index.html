@@ -42,6 +42,7 @@ button[aria-pressed="true"] { border-color: var(--acento); color: var(--acento);
 /* Cabecera y pestañas */
 .cabecera { position: sticky; top: 0; z-index: 10; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 16px; padding: 8px 16px 0; background: var(--superficie); border-bottom: 1px solid var(--linea); }
 .cabecera h1 { flex: 1 1 260px; min-width: 0; margin: 0 0 8px; font-size: 16px; font-weight: 650; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cabecera .hora { flex: 1 1 100%; margin: 0 0 6px; }
 .pestanas { display: flex; gap: 4px; flex: 0 0 auto; }
 .pestanas a { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 0 18px; color: var(--suave); text-decoration: none; font-weight: 600; border-bottom: 3px solid transparent; }
 .pestanas a:hover { color: var(--texto); }
@@ -194,6 +195,7 @@ summary:hover { color: var(--acento); }
     <a role="tab" id="pestana-roadmap" href="#roadmap" aria-controls="panel-roadmap" aria-selected="false" tabindex="-1">Roadmap</a>
     <a role="tab" id="pestana-ramas" href="#ramas" aria-controls="panel-ramas" aria-selected="false" tabindex="-1">Ramas</a>
   </nav>
+  <p id="hora" class="hora" aria-live="polite">Consultando…</p>
 </header>
 <p id="aviso" class="aviso" role="status" hidden></p>
 <main id="contenido" tabindex="-1">
@@ -211,7 +213,6 @@ summary:hover { color: var(--acento); }
         </span>
         <button type="button" id="ver-tabla" aria-pressed="false">Tabla</button>
         <button type="button" id="actualizar" title="Actualizar"><span aria-hidden="true">↻ </span><span class="texto-boton">Actualizar</span></button>
-        <span id="hora" class="hora"></span>
       </div>
       <ul id="leyenda" class="leyenda" aria-label="Leyenda del grafo"></ul>
     </div>
@@ -255,8 +256,17 @@ const ancla = (id) => 'r-' + String(id).replace(/[^\w-]/g, '_');
 
 // ---------- Lectura ----------
 
+// no-store evita la caché del navegador; una URL distinta pide también otra entrada a intermediarios.
+// No garantiza que GitHub o una CDN ya hayan propagado una publicación.
+let consulta = 0;
+function sinCache(url) {
+  const destino = new URL(url, location.href);
+  destino.searchParams.set('_lynx', Date.now() + '-' + (++consulta));
+  return destino.href;
+}
+
 async function texto(url, opcional) {
-  const respuesta = await fetch(url, { cache: 'no-store' });
+  const respuesta = await fetch(sinCache(url), { cache: 'no-store' });
   if (opcional && respuesta.status === 404) return null;
   if (!respuesta.ok) throw new Error(`${url.split('?')[0].split('/').pop()}: respuesta ${respuesta.status}`);
   return respuesta.text();
@@ -265,38 +275,56 @@ async function texto(url, opcional) {
 async function archivoGist(gist, nombre) {
   const archivo = gist.files && gist.files[nombre];
   if (!archivo) return null;
-  return archivo.truncated ? texto(archivo.raw_url) : archivo.content;
+  if (archivo.truncated) return texto(archivo.raw_url);
+  if (typeof archivo.content !== 'string') throw new Error(`${nombre}: contenido ausente`);
+  return archivo.content;
 }
 
 async function leer() {
   if (LOCAL) {
-    const [avance, lector, ramas] = await Promise.all([texto('avance.md?t=' + Date.now()), texto('lector.json?t=' + Date.now(), true), texto('ramas.md?t=' + Date.now(), true)]);
-    return { avance, lector, ramas };
+    const [avance, lector, ramas] = await Promise.all([texto('avance.md'), texto('lector.json', true), texto('ramas.md', true)]);
+    return { avance, lector, ramas, publicado: null };
   }
   if (!GIST) throw new Error('falta el gist: abre la página desde gist.githack.com o añade ?gist=<id>&usuario=<usuario>');
-  // Primero la API (siempre la última versión y una sola consulta); si se agota su límite, el archivo en bruto.
+  // La API sin revisión pide la versión actual. Los raw_url de archivos truncados pertenecen a esa revisión.
+  // Si la API falla (p. ej. por su límite), las URLs raw sin revisión piden los archivos actuales.
   try {
-    const respuesta = await fetch(`https://api.github.com/gists/${GIST}`, { cache: 'no-store' });
+    const respuesta = await fetch(sinCache(`https://api.github.com/gists/${GIST}`), { cache: 'no-store' });
     if (respuesta.ok) {
       const gist = await respuesta.json();
       const avance = await archivoGist(gist, 'avance.md');
-      if (avance !== null) return { avance, lector: await archivoGist(gist, 'lector.json'), ramas: await archivoGist(gist, 'ramas.md') };
+      if (avance !== null) return { avance, lector: await archivoGist(gist, 'lector.json'), ramas: await archivoGist(gist, 'ramas.md'), publicado: gist.updated_at };
     }
   } catch (error) { /* se intenta el archivo en bruto */ }
-  const bruto = (nombre) => `https://gist.githubusercontent.com/${USUARIO}/${GIST}/raw/${nombre}?t=${Date.now()}`;
+  const bruto = (nombre) => `https://gist.githubusercontent.com/${USUARIO}/${GIST}/raw/${nombre}`;
   const [avance, lector, ramas] = await Promise.all([
-    texto(bruto('avance.md')), texto(bruto('lector.json'), true).catch(() => null), texto(bruto('ramas.md'), true).catch(() => null),
+    texto(bruto('avance.md')), texto(bruto('lector.json'), true), texto(bruto('ramas.md'), true),
   ]);
-  return { avance, lector, ramas };
+  // Raw no informa de la fecha de publicación del gist; Last-Modified puede ser la fecha de la caché.
+  return { avance, lector, ramas, publicado: null };
 }
 
+let actualizando = false;
+let pendiente = false;
 async function actualizar() {
+  // Una consulta lenta no puede sobrescribir otra más reciente. Si hay otro disparador, consulta de nuevo al acabar.
+  if (actualizando) { pendiente = true; return; }
+  actualizando = true;
+  try {
+    do { pendiente = false; await consultar(); } while (pendiente);
+  } finally { actualizando = false; }
+}
+
+function fechaConsulta(valor) {
+  const fecha = valor ? new Date(valor) : null;
+  return fecha && !Number.isNaN(fecha.getTime()) ? fecha.toLocaleString('es-ES') : 'sin dato';
+}
+
+async function consultar() {
   const aviso = $('aviso');
   try {
     const datos = await leer();
-    estado.leido = Date.now();
-    $('hora').textContent = 'leído a las ' + new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
-    aviso.hidden = true;
+    const consultado = Date.now();
     // El texto leído se guarda sólo tras pintarlo bien: si falla, se vuelve a intentar en la siguiente lectura.
     if (datos.lector !== estado.lectorTexto) {
       const previo = estado.lector;
@@ -325,6 +353,10 @@ async function actualizar() {
       await pintarRamas(datos.ramas);
       estado.ramasTexto = datos.ramas;
     }
+    estado.leido = consultado;
+    $('hora').textContent = 'publicado a las ' + fechaConsulta(datos.publicado) + ' · consultado a las ' + fechaConsulta(consultado);
+    $('hora').title = datos.publicado ? 'Publicación: updated_at del gist devuelto por GitHub.' : 'Esta lectura no proporciona la fecha de publicación del gist.';
+    aviso.hidden = true;
   } catch (error) {
     aviso.textContent = 'No se pudo actualizar: ' + error.message + '. Se reintentará en dos minutos.';
     aviso.hidden = false;
@@ -817,6 +849,7 @@ async function pintarRamas(md) {
 const PESTANAS = ['avance', 'roadmap', 'ramas'];
 const desplazamiento = { avance: 0, roadmap: 0, ramas: 0 };
 let activa = 'avance';
+let iniciado = false;
 
 function seleccionar(nombre, restaurar) {
   if (nombre !== activa) desplazamiento[activa] = window.scrollY;
@@ -829,6 +862,7 @@ function seleccionar(nombre, restaurar) {
   }
   const cambia = nombre !== activa;
   activa = nombre;
+  if (cambia && iniciado) actualizar();
   if (nombre === 'avance' && estado.modo === 'ajustar') requestAnimationFrame(ajustar);
   if (cambia && restaurar) window.scrollTo(0, desplazamiento[nombre]);
 }
@@ -863,10 +897,12 @@ new ResizeObserver(([entrada]) => {
 }).observe($('cabecera'));
 window.addEventListener('resize', () => { if (activa === 'avance' && estado.modo === 'ajustar') ajustar(); });
 document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'visible' && Date.now() - estado.leido > REFRESCO_MS) actualizar();
+  if (document.visibilityState === 'visible') actualizar();
 });
+window.addEventListener('pageshow', (evento) => { if (evento.persisted) actualizar(); });
 
 desdeDireccion(false);
+iniciado = true;
 actualizar();
 setInterval(actualizar, REFRESCO_MS);
 </script>
