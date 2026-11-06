@@ -280,6 +280,28 @@ async function archivoGist(gist, nombre) {
   return archivo.content;
 }
 
+// Última respuesta 200 de la API con su ETag; limiteHasta: instante hasta el que GitHub no admite más peticiones (con
+// aviso); apiDesde: instante antes del cual no se pide a la API para repartir el cupo restante hasta su reinicio.
+// Sin autenticar, GitHub descuenta también los 304. El margen cubre que el temporizador llegue algo antes del
+// intervalo contado desde el inicio de la petición anterior.
+const MARGEN_MS = 5000;
+let guardado = null;
+let limiteHasta = 0;
+let apiDesde = 0;
+function limitar(respuesta, inicio) {
+  const cabecera = (nombre) => respuesta.headers.get(nombre);
+  const reintento = cabecera('Retry-After');
+  const restante = cabecera('X-RateLimit-Remaining');
+  const reinicio = Number(cabecera('X-RateLimit-Reset')) * 1000;
+  if (reintento !== null && Number(reintento) >= 0) limiteHasta = Date.now() + Number(reintento) * 1000;
+  else if (restante === '0' && reinicio > 0) limiteHasta = reinicio;
+  else if (Number(restante) > 0 && reinicio > 0) apiDesde = inicio + Math.max(REFRESCO_MS - MARGEN_MS, (reinicio - inicio) / Number(restante));
+}
+
+function hora(valor) {
+  return new Date(valor).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+}
+
 async function leer() {
   if (LOCAL) {
     const [avance, lector, ramas] = await Promise.all([texto('avance.md'), texto('lector.json', true), texto('ramas.md', true)]);
@@ -287,15 +309,29 @@ async function leer() {
   }
   if (!GIST) throw new Error('falta el gist: abre la página desde gist.githack.com o añade ?gist=<id>&usuario=<usuario>');
   // La API sin revisión pide la versión actual. Los raw_url de archivos truncados pertenecen a esa revisión.
-  // Si la API falla (p. ej. por su límite), las URLs raw sin revisión piden los archivos actuales.
-  try {
-    const respuesta = await fetch(sinCache(`https://api.github.com/gists/${GIST}`), { cache: 'no-store' });
-    if (respuesta.ok) {
-      const gist = await respuesta.json();
-      const avance = await archivoGist(gist, 'avance.md');
-      if (avance !== null) return { avance, lector: await archivoGist(gist, 'lector.json'), ramas: await archivoGist(gist, 'ramas.md'), publicado: gist.updated_at };
-    }
-  } catch (error) { /* se intenta el archivo en bruto */ }
+  // Con ETag guardado la petición es condicional. Si GitHub agota el límite no se vuelve a pedir a la API hasta
+  // su reinicio, y el cupo restante se reparte hasta entonces; mientras, y si la API falla, las URLs raw sin
+  // revisión piden los archivos actuales.
+  if (Date.now() >= Math.max(limiteHasta, apiDesde)) {
+    try {
+      const pedido = { cache: 'no-store' };
+      if (guardado) pedido.headers = { 'If-None-Match': guardado.etag };
+      const inicio = Date.now();
+      const respuesta = await fetch(sinCache(`https://api.github.com/gists/${GIST}`), pedido);
+      limitar(respuesta, inicio);
+      let gist = null;
+      if (respuesta.status === 304 && guardado) gist = guardado.gist;
+      else if (respuesta.ok) {
+        gist = await respuesta.json();
+        const etag = respuesta.headers.get('ETag');
+        guardado = etag ? { etag, gist } : null;
+      }
+      if (gist) {
+        const avance = await archivoGist(gist, 'avance.md');
+        if (avance !== null) return { avance, lector: await archivoGist(gist, 'lector.json'), ramas: await archivoGist(gist, 'ramas.md'), publicado: gist.updated_at };
+      }
+    } catch (error) { /* se intenta el archivo en bruto */ }
+  }
   const bruto = (nombre) => `https://gist.githubusercontent.com/${USUARIO}/${GIST}/raw/${nombre}`;
   const [avance, lector, ramas] = await Promise.all([
     texto(bruto('avance.md')), texto(bruto('lector.json'), true), texto(bruto('ramas.md'), true),
@@ -356,7 +392,9 @@ async function consultar() {
     estado.leido = consultado;
     $('hora').textContent = 'publicado a las ' + fechaConsulta(datos.publicado) + ' · consultado a las ' + fechaConsulta(consultado);
     $('hora').title = datos.publicado ? 'Publicación: updated_at del gist devuelto por GitHub.' : 'Esta lectura no proporciona la fecha de publicación del gist.';
-    aviso.hidden = true;
+    const limitado = Date.now() < limiteHasta;
+    aviso.textContent = limitado ? `límite de GitHub, datos de ${hora(consultado)}, siguiente intento a las ${hora(limiteHasta)}` : '';
+    aviso.hidden = !limitado;
   } catch (error) {
     aviso.textContent = 'No se pudo actualizar: ' + error.message + '. Se reintentará en dos minutos.';
     aviso.hidden = false;
