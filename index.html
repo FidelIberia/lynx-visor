@@ -6,7 +6,8 @@
 <meta name="color-scheme" content="light dark">
 <title>Avance del roadmap</title>
 <style>
-/* Visor de Lynx: pestaña «Avance» (grafo del plan de avance.md), «Roadmap» (lector de lector.json) y «Ramas» (grafo de ramas.md). */
+/* Visor de Lynx: pestaña «Avance» (grafo del plan de avance.md), «Roadmap» (lector de lector.json), «Ramas» (grafo de ramas.md) y,
+   en modo vivo, «Agentes» (árbol de agentes.json) bajo un selector de roadmaps. */
 :root {
   --fondo: #f5f6f8; --superficie: #ffffff; --texto: #111827; --suave: #4b5563; --linea: #d4d8de; --linea-suave: #e7eaee;
   --acento: #1d4ed8; --foco: #2563eb; --aviso: #b91c1c; --aviso-fondo: #fef2f2;
@@ -53,7 +54,12 @@ button[aria-pressed="true"] { border-color: var(--acento); color: var(--acento);
   .pestanas { flex: 1 1 100%; }
   .pestanas a { flex: 1; }
 }
+.pestanas a[hidden] { display: none; }
 .aviso { margin: 8px 16px 0; padding: 8px 12px; border-radius: 6px; background: var(--aviso-fondo); color: var(--aviso); }
+.roadmaps { flex: 1 1 100%; display: flex; gap: 6px; overflow-x: auto; margin: 0 0 4px; }
+.roadmaps:empty { display: none; }
+.roadmaps a { padding: 4px 12px; border: 1px solid var(--linea); border-radius: 999px; color: var(--suave); text-decoration: none; white-space: nowrap; font-size: 14px; }
+.roadmaps a[aria-current="page"] { color: var(--acento); border-color: var(--acento); font-weight: 600; }
 
 /* Chips de estado: color y, siempre, texto. */
 .chip { display: inline-flex; align-items: center; gap: 4px; padding: 1px 8px; border-radius: 999px; font-size: 13px; font-weight: 600; white-space: nowrap; background: var(--pend-fondo); color: var(--pend-texto); }
@@ -183,6 +189,16 @@ summary:hover { color: var(--acento); }
   .ramas { padding: 8px 8px 40px; }
   .ramas-lienzo { padding: 8px; }
 }
+/* Pestaña Agentes */
+.agentes { max-width: 1180px; margin: 0 auto; padding: 12px 16px 48px; }
+.hijos { margin-left: 8px; padding-left: 12px; border-left: 1px solid var(--linea); }
+.hoja { padding-left: 20px; }
+.grafo g.node.pulsable { cursor: pointer; }
+.nodo.elegido { background: var(--curso-fondo); outline: 2px solid var(--foco); border-radius: 4px; }
+.nodo { display: inline-flex; flex-wrap: wrap; align-items: baseline; gap: 2px 12px; vertical-align: top; max-width: calc(100% - 24px); padding: 3px 0; }
+.dato { font-size: 13px; color: var(--suave); font-variant-numeric: tabular-nums; }
+.aviso-nodo { font-size: 13px; color: var(--aviso); }
+@media (max-width: 600px) { .agentes { padding: 8px 8px 40px; } }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
 </style>
 </head>
@@ -190,14 +206,17 @@ summary:hover { color: var(--acento); }
 <a class="saltar" href="#contenido">Saltar al contenido</a>
 <header class="cabecera" id="cabecera">
   <h1 id="titulo">Avance del roadmap</h1>
+  <nav id="roadmaps" class="roadmaps" aria-label="Roadmaps"></nav>
   <nav class="pestanas" role="tablist" aria-label="Vistas">
     <a role="tab" id="pestana-avance" href="#avance" aria-controls="panel-avance" aria-selected="true">Avance</a>
     <a role="tab" id="pestana-roadmap" href="#roadmap" aria-controls="panel-roadmap" aria-selected="false" tabindex="-1">Roadmap</a>
     <a role="tab" id="pestana-ramas" href="#ramas" aria-controls="panel-ramas" aria-selected="false" tabindex="-1">Ramas</a>
+    <a role='tab' id="pestana-agentes" href="#agentes" aria-controls="panel-agentes" aria-selected="false" tabindex="-1" hidden>Agentes</a>
   </nav>
   <p id="hora" class="hora" aria-live="polite">Consultando…</p>
 </header>
 <p id="aviso" class="aviso" role="status" hidden></p>
+<p id="aviso-agentes" class="aviso" role="status" hidden></p>
 <main id="contenido" tabindex="-1">
   <section id="panel-avance" role="tabpanel" aria-labelledby="pestana-avance">
     <div class="avance-cabecera">
@@ -232,6 +251,9 @@ summary:hover { color: var(--acento); }
       </div>
     </div>
   </section>
+  <section id="panel-agentes" role='tabpanel' aria-labelledby="pestana-agentes" hidden>
+    <div class="agentes"><div id="agentes-arbol"></div></div>
+  </section>
 </main>
 <noscript><p class="vacio">El visor necesita JavaScript. El avance está en avance.md, junto a esta página.</p></noscript>
 <script type="module">
@@ -240,16 +262,19 @@ const REFRESCO_MS = 120000;
 const ESTRECHA = window.matchMedia('(max-width: 760px)');
 
 // Origen de los datos: ?fuente=local lee la carpeta de la página; si no, el gist de la dirección
-// (gist.githack.com/<usuario>/<id>/raw/index.html) o el de ?gist=<id>&usuario=<usuario>.
+// (gist.githack.com/<usuario>/<id>/raw/index.html) o el de ?gist=<id>&usuario=<usuario>; sin ninguno de los dos,
+// modo vivo: la carpeta que sirve lynx serve, leída cada ?cada= segundos (5 por defecto, mínimo 2).
 const parametros = new URLSearchParams(location.search);
 const LOCAL = parametros.get('fuente') === 'local';
 const partes = location.pathname.split('/').filter(Boolean);
 const GIST = parametros.get('gist') || partes[1];
 const USUARIO = parametros.get('usuario') || partes[0];
+const VIVO = !LOCAL && !GIST;
+const CADA = Math.max(2, Number(parametros.get('cada')) || 5);
 
 const $ = (id) => document.getElementById(id);
 // En pantallas estrechas se empieza a tamaño real (legible, con desplazamiento); «Ajustar» queda a un toque.
-const estado = { avance: null, lector: null, fase: null, faseElegida: false, modo: ESTRECHA.matches ? 'real' : 'ajustar', escala: 1, tamano: null, tabla: false, leido: 0 };
+const estado = { avance: null, lector: null, fase: null, faseElegida: false, modo: ESTRECHA.matches ? 'real' : 'ajustar', escala: 1, tamano: null, tabla: false, leido: 0, bueno: 0, id: null, vistoId: undefined, roadmapsHtml: '', agentes: null, agentesAviso: '', agenteElegido: null, agenteVisto: null };
 
 const esc = (valor) => String(valor ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 const ancla = (id) => 'r-' + String(id).replace(/[^\w-]/g, '_');
@@ -307,7 +332,7 @@ async function leer() {
     const [avance, lector, ramas] = await Promise.all([texto('avance.md'), texto('lector.json', true), texto('ramas.md', true)]);
     return { avance, lector, ramas, publicado: null };
   }
-  if (!GIST) throw new Error('falta el gist: abre la página desde gist.githack.com o añade ?gist=<id>&usuario=<usuario>');
+  if (VIVO) return leerVivo();
   // La API sin revisión pide la versión actual. Los raw_url de archivos truncados pertenecen a esa revisión.
   // Con ETag guardado la petición es condicional. Si GitHub agota el límite no se vuelve a pedir a la API hasta
   // su reinicio, y el cupo restante se reparte hasta entonces; mientras, y si la API falla, las URLs raw sin
@@ -340,6 +365,43 @@ async function leer() {
   return { avance, lector, ramas, publicado: null };
 }
 
+// roadmaps.json (v1) lista los roadmaps; se lee la carpeta del elegido (hash #<id>/<pestaña>) y agentes.json es opcional.
+async function leerVivo() {
+  const indice = JSON.parse(await texto('roadmaps.json'));
+  if (indice.schema_version !== 1 || !Array.isArray(indice.roadmaps)) throw new Error(`roadmaps.json: versión ${indice.schema_version} no compatible`);
+  const pedido = estado.id;
+  const elegido = indice.roadmaps.find((r) => r.id === pedido) || indice.roadmaps[0];
+  if (!elegido) throw new Error('roadmaps.json: sin roadmaps');
+  const carpeta = encodeURIComponent(elegido.id) + '/';
+  const [avance, lector, ramas, agentes] = await Promise.all([
+    texto(carpeta + 'avance.md'), texto(carpeta + 'lector.json', true), texto(carpeta + 'ramas.md', true), texto(carpeta + 'agentes.json', true),
+  ]);
+  return { avance, lector, ramas, agentes, publicado: indice.generado, indice, id: elegido.id, pedido };
+}
+
+// Cambiar de roadmap descarta lo leído del anterior. Un id desconocido o desaparecido lleva al primero, salvo que
+// se haya navegado mientras se leía.
+function elegirRoadmap(datos) {
+  if (datos.id !== estado.vistoId) {
+    Object.assign(estado, { vistoId: datos.id, avance: null, avanceTexto: undefined, lector: null, lectorTexto: undefined, ramasTexto: undefined,
+      agentesTexto: undefined, fase: null, faseElegida: false });
+  }
+  if (estado.id === datos.pedido) {
+    estado.id = datos.id;
+    if (datos.pedido && datos.pedido !== datos.id) history.replaceState(null, '', direccion(activa));
+  }
+  const html = datos.indice.roadmaps.map((r) => `<a href="#${encodeURIComponent(r.id)}/avance"${r.id === estado.id ? ' aria-current="page"' : ''}>`
+    + `${esc([r.proyecto, r.titulo].filter(Boolean).join(' · ') || r.id)}</a>`).join('');
+  if (html !== estado.roadmapsHtml) {
+    $('roadmaps').innerHTML = html;
+    estado.roadmapsHtml = html;
+  }
+  enlazar();
+}
+
+const horaCompleta = (valor) => new Date(valor).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+const avisoViejo = () => `Datos desactualizados (última lectura buena: ${estado.bueno ? horaCompleta(estado.bueno) : 'sin dato'})`;
+
 let actualizando = false;
 let pendiente = false;
 async function actualizar() {
@@ -361,6 +423,7 @@ async function consultar() {
   try {
     const datos = await leer();
     const consultado = Date.now();
+    if (VIVO) elegirRoadmap(datos);
     // El texto leído se guarda sólo tras pintarlo bien: si falla, se vuelve a intentar en la siguiente lectura.
     if (datos.lector !== estado.lectorTexto) {
       const previo = estado.lector;
@@ -389,14 +452,24 @@ async function consultar() {
       await pintarRamas(datos.ramas);
       estado.ramasTexto = datos.ramas;
     }
+    if (VIVO && datos.agentes !== estado.agentesTexto) {
+      pintarAgentes(datos.agentes);
+      estado.agentesTexto = datos.agentes;
+    }
     estado.leido = consultado;
+    // En vivo, los datos también son viejos si quien los escribe lleva más de 3 × cada sin renovarlos.
+    const viejo = VIVO && consultado - Date.parse(datos.indice.generado) > 3000 * (Number(datos.indice.cada) || CADA);
+    if (VIVO && !viejo) estado.bueno = consultado;
     $('hora').textContent = 'publicado a las ' + fechaConsulta(datos.publicado) + ' · consultado a las ' + fechaConsulta(consultado);
-    $('hora').title = datos.publicado ? 'Publicación: updated_at del gist devuelto por GitHub.' : 'Esta lectura no proporciona la fecha de publicación del gist.';
-    const limitado = Date.now() < limiteHasta;
-    aviso.textContent = limitado ? `límite de GitHub, datos de ${hora(consultado)}, siguiente intento a las ${hora(limiteHasta)}` : '';
-    aviso.hidden = !limitado;
+    $('hora').title = VIVO ? 'Generación: campo generado de roadmaps.json.'
+      : datos.publicado ? 'Publicación: updated_at del gist devuelto por GitHub.' : 'Esta lectura no proporciona la fecha de publicación del gist.';
+    const limitado = !VIVO && Date.now() < limiteHasta;
+    aviso.textContent = viejo ? avisoViejo() : limitado ? `límite de GitHub, datos de ${hora(consultado)}, siguiente intento a las ${hora(limiteHasta)}` : '';
+    aviso.title = '';
+    aviso.hidden = !aviso.textContent;
   } catch (error) {
-    aviso.textContent = 'No se pudo actualizar: ' + error.message + '. Se reintentará en dos minutos.';
+    aviso.textContent = VIVO ? avisoViejo() : 'No se pudo actualizar: ' + error.message + '. Se reintentará en dos minutos.';
+    aviso.title = VIVO ? error.message : '';
     aviso.hidden = false;
     if (!estado.avance) $('estado').textContent = 'Sin datos del avance.';
     if (!estado.lector) $('lector').innerHTML = '<p class="vacio">Sin datos del roadmap.</p>';
@@ -591,6 +664,7 @@ async function pintarGrafo() {
   if (!avance.grafo.piezas.length) { grafo.innerHTML = '<p class="vacio">avance.md no trae un bloque mermaid.</p>'; return; }
   try {
     colocar(grafo, await dibujar(fuenteGrafo(avance.grafo, estado.fase)));
+    hacerPulsables(grafo);
   } catch (error) {
     grafo.innerHTML = `<p class="vacio" style="line-height:1.5">No se pudo dibujar el grafo: ${esc(error.message)}. Pulsa «Tabla» para verlo en texto.</p>`;
     estado.tamano = null;
@@ -661,21 +735,28 @@ $('lienzo').addEventListener('keydown', (evento) => {
   evento.preventDefault();
 });
 // Con el ratón, el grafo se arrastra; en pantallas táctiles se desplaza y se amplía con los dedos.
+// El puntero se captura sólo al pasar de ARRASTRE_PX: capturarlo al pulsar enviaría el click al lienzo y no al nodo del grafo.
 (() => {
+  const ARRASTRE_PX = 4;
   const lienzo = $('lienzo');
   let inicio = null;
   lienzo.addEventListener('pointerdown', (e) => {
     if (e.pointerType !== 'mouse' || e.button !== 0) return;
-    inicio = { x: e.clientX, y: e.clientY, izquierda: lienzo.scrollLeft, arriba: lienzo.scrollTop };
-    lienzo.setPointerCapture(e.pointerId);
-    lienzo.classList.add('arrastrando');
+    inicio = { x: e.clientX, y: e.clientY, izquierda: lienzo.scrollLeft, arriba: lienzo.scrollTop, capturado: false };
   });
   lienzo.addEventListener('pointermove', (e) => {
     if (!inicio) return;
+    if (!(e.buttons & 1)) return soltar();
+    if (!inicio.capturado) {
+      if (Math.hypot(e.clientX - inicio.x, e.clientY - inicio.y) < ARRASTRE_PX) return;
+      inicio.capturado = true;
+      lienzo.setPointerCapture(e.pointerId);
+      lienzo.classList.add('arrastrando');
+    }
     lienzo.scrollLeft = inicio.izquierda - (e.clientX - inicio.x);
     lienzo.scrollTop = inicio.arriba - (e.clientY - inicio.y);
   });
-  const soltar = () => { inicio = null; lienzo.classList.remove('arrastrando'); };
+  function soltar() { inicio = null; lienzo.classList.remove('arrastrando'); }
   lienzo.addEventListener('pointerup', soltar);
   lienzo.addEventListener('pointercancel', soltar);
 })();
@@ -882,14 +963,159 @@ async function pintarRamas(md) {
   }
 }
 
+// ---------- Pestaña Agentes ----------
+
+// agentes.json v1: lista plana con padre, pintada como árbol. null = «sin dato».
+const SIN_DATO = 'sin dato';
+const miles = (n) => String(n).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+const dato = (etiqueta, valor) => `<span class="dato">${etiqueta} ${valor}</span>`;
+
+function segundos(iso) {
+  const instante = Date.parse(iso);
+  return Number.isNaN(instante) ? null : Math.max(0, Math.floor((Date.now() - instante) / 1000));
+}
+function duracion(iso) {
+  const s = segundos(iso);
+  if (s === null) return SIN_DATO;
+  const dos = (n) => String(n).padStart(2, '0');
+  const h = Math.floor(s / 3600);
+  const m = Math.floor(s / 60) % 60;
+  return h ? `${h} h ${dos(m)} min ${dos(s % 60)} s` : m ? `${m} min ${dos(s % 60)} s` : `${s} s`;
+}
+const minutos = (iso) => Math.floor(segundos(iso) / 60) + ' min';
+const relojes = (iso) => segundos(iso) === null ? SIN_DATO : `<span data-desde="${esc(iso)}">${duracion(iso)}</span>`;
+
+function textoCuota(c) {
+  if (!c || c.porcentaje == null) return SIN_DATO;
+  const reinicio = Number.isNaN(Date.parse(c.reinicio)) ? SIN_DATO : hora(c.reinicio);
+  const muestra = segundos(c.muestra) === null ? 'muestra sin dato' : `muestra de hace <span data-muestra="${esc(c.muestra)}">${minutos(c.muestra)}</span>`;
+  return `${esc(c.porcentaje)} % (${esc(c.ventana ?? SIN_DATO)}, reinicio ${reinicio}, ${muestra})`;
+}
+
+function filaAgente(a, elegido) {
+  const t = a.tokens || {};
+  const sustituidos = Number.isInteger(a.sustituidos) && a.sustituidos > 0
+    ? `<span class="dato">incluye ${a.sustituidos} ${a.sustituidos === 1 ? 'agente sustituido' : 'agentes sustituidos'}</span>` : '';
+  const tokens = t.entrada_nueva == null || t.salida == null ? SIN_DATO : `${miles(t.entrada_nueva)} + ${miles(t.salida)}`;
+  return `<span class="nodo${elegido ? ' elegido' : ''}"><strong>${esc(a.id)}</strong><span class="chip neutro">${esc(a.tipo)}</span>`
+    + dato('destino', esc(a.destino ?? SIN_DATO)) + dato('modelo', esc(a.modelo ?? SIN_DATO))
+    + dato('entrada nueva + salida', tokens) + dato('total', t.total == null ? SIN_DATO : miles(t.total)) + sustituidos
+    + dato('en la tarea desde hace', relojes(a.desde)) + dato('último evento hace', relojes(a.ultimo_evento))
+    + dato('cuota', textoCuota(a.cuota)) + (a.aviso ? `<span class="aviso-nodo">${esc(a.aviso)}</span>` : '') + '</span>';
+}
+
+// La lista ya viene en orden de árbol y se respeta. Con un agente elegido y `forzar`, su rama (ancestros, él y descendientes) se abre.
+function htmlAgentes(agentes, cerrados, elegido, forzar) {
+  const ids = new Map(agentes.map((a) => [a.id, a]));
+  const hijos = new Map();
+  for (const a of agentes) {
+    const padre = ids.has(a.padre) ? a.padre : null;
+    hijos.set(padre, [...(hijos.get(padre) || []), a]);
+  }
+  const rama = new Set();
+  if (forzar && ids.has(elegido)) {
+    for (let a = ids.get(elegido); a && !rama.has(a.id); a = ids.get(a.padre)) rama.add(a.id);
+    const bajar = (id) => { for (const h of hijos.get(id) || []) if (!rama.has(h.id)) { rama.add(h.id); bajar(h.id); } };
+    bajar(elegido);
+  }
+  const nodo = (a) => {
+    const propios = hijos.get(a.id) || [];
+    const fila = filaAgente(a, a.id === elegido);
+    return propios.length
+      ? `<details data-id="${esc(a.id)}"${cerrados.has(a.id) && !rama.has(a.id) ? '' : ' open'}><summary>${fila}</summary><div class="hijos">${propios.map(nodo).join('')}</div></details>`
+      : `<div class="hoja" data-id="${esc(a.id)}">${fila}</div>`;
+  };
+  return (hijos.get(null) || []).map(nodo).join('') || '<p class="vacio">Sin agentes registrados.</p>';
+}
+
+function avisoAgentes() {
+  const a = estado.agentes;
+  const viejo = a && Date.now() - Date.parse(a.generado) > 3000 * (Number(a.cada) || CADA);
+  const sinAgente = a && estado.agenteElegido && !a.agentes.some((x) => x.id === estado.agenteElegido) ? `sin agente para ${estado.agenteElegido}` : '';
+  $('aviso-agentes').textContent = estado.agentesAviso || [sinAgente, viejo ? 'datos de agentes desactualizados' : ''].filter(Boolean).join(' · ');
+  $('aviso-agentes').hidden = !$('aviso-agentes').textContent;
+}
+
+// El agente elegido (tercer segmento del hash) se resalta y se lleva a la vista, con su rama abierta, al elegirlo; después
+// el usuario puede cerrar ramas.
+function pintarArbol() {
+  const arbol = $('agentes-arbol');
+  const cerrados = new Set([...arbol.querySelectorAll('details:not([open])')].map((d) => d.getAttribute('data-id')));
+  const elegido = estado.agenteElegido;
+  const nuevo = !!estado.agentes && elegido !== estado.agenteVisto;
+  if (estado.agentes) estado.agenteVisto = elegido;
+  arbol.innerHTML = estado.agentes ? htmlAgentes(estado.agentes.agentes, cerrados, elegido, nuevo) : '';
+  const nodo = nuevo && arbol.querySelector('.elegido');
+  if (nodo) nodo.scrollIntoView({ block: 'center' });
+  avisoAgentes();
+}
+
+// La pestaña sólo existe con agentes.json 200 y schema_version 1 con su lista; otro caso se avisa en su línea y no se
+// pinta, sin tratarlo como fallo de lectura.
+function pintarAgentes(texto) {
+  let datos = null;
+  estado.agentes = null;
+  estado.agentesAviso = '';
+  try { datos = texto === null ? null : JSON.parse(texto); } catch (error) { estado.agentesAviso = 'agentes.json: no es JSON válido'; }
+  if (texto !== null && !estado.agentesAviso) {
+    if (!datos || datos.schema_version !== 1) estado.agentesAviso = `agentes.json: versión ${datos ? datos.schema_version : 'desconocida'} no compatible`;
+    else if (!Array.isArray(datos.agentes)) estado.agentesAviso = 'agentes.json: falta la lista de agentes';
+    else estado.agentes = datos;
+  }
+  $('pestana-agentes').hidden = !estado.agentes;
+  marcarPulsables($('grafo'));
+  pintarArbol();
+  if (!estado.agentes && activa === 'agentes') {
+    history.replaceState(null, '', direccion('avance'));
+    seleccionar('avance', true);
+  }
+}
+
+// Mermaid numera los nodos del grafo: P1_T2 es el elemento flowchart-P1_T2-5. Una tarea lleva a su nodo de destino y una gate
+// al coordinador activo de su fase; sin nodo, el hash lleva el id pedido y Agentes avisa «sin agente para <id>».
+const NODO_PULSABLE = /^flowchart-(.+?)_([TG]\d+)-\d+$/;
+function agenteDeNodo(fase, nodo) {
+  const agentes = estado.agentes.agentes;
+  if (nodo[0] === 'T') return (agentes.find((a) => a.destino === `${fase}-${nodo}`) || {}).id ?? `${fase}-${nodo}`;
+  const prefijo = 'coordinacion-' + fase.toLowerCase();
+  const reciente = (a) => Date.parse(a.ultimo_evento) || 0;
+  const activo = agentes.filter((a) => a.tipo === 'coordinacion' && (a.id.toLowerCase() === prefijo || a.id.toLowerCase().startsWith(prefijo + '-')))
+    .reduce((mejor, a) => !mejor || reciente(a) > reciente(mejor) ? a : mejor, null);
+  return activo ? activo.id : `${fase}-${nodo}`;
+}
+function pulsarNodo(evento) {
+  const [, fase, nodo] = NODO_PULSABLE.exec(evento.currentTarget.id);
+  if (estado.agentes) location.hash = direccion('agentes') + '/' + encodeURIComponent(agenteDeNodo(fase, nodo));
+}
+// Sólo son pulsables con un agentes.json válido: se marcan al pintar el grafo y al cambiar los agentes.
+function marcarPulsables(grafo) {
+  for (const nodo of grafo.querySelectorAll('g.node')) if (NODO_PULSABLE.test(nodo.id)) nodo.classList.toggle('pulsable', !!estado.agentes);
+}
+function hacerPulsables(grafo) {
+  if (!VIVO) return;
+  for (const nodo of grafo.querySelectorAll('g.node')) if (NODO_PULSABLE.test(nodo.id)) nodo.addEventListener('click', pulsarNodo);
+  marcarPulsables(grafo);
+}
+
+// Los tiempos corren cada segundo sin volver a leer.
+function tictac() {
+  if (!estado.agentes) return;
+  const arbol = $('agentes-arbol');
+  for (const celda of arbol.querySelectorAll('[data-desde]')) celda.textContent = duracion(celda.getAttribute('data-desde'));
+  for (const celda of arbol.querySelectorAll('[data-muestra]')) celda.textContent = minutos(celda.getAttribute('data-muestra'));
+  avisoAgentes();
+}
+
 // ---------- Pestañas ----------
 
 const PESTANAS = ['avance', 'roadmap', 'ramas'];
-const desplazamiento = { avance: 0, roadmap: 0, ramas: 0 };
+if (VIVO) PESTANAS.push('agentes');
+const desplazamiento = { avance: 0, roadmap: 0, ramas: 0, agentes: 0 };
 let activa = 'avance';
 let iniciado = false;
 
 function seleccionar(nombre, restaurar) {
+  if (nombre !== 'agentes') estado.agenteElegido = null;
   if (nombre !== activa) desplazamiento[activa] = window.scrollY;
   for (const otra of PESTANAS) {
     const sel = otra === nombre;
@@ -905,16 +1131,37 @@ function seleccionar(nombre, restaurar) {
   if (cambia && restaurar) window.scrollTo(0, desplazamiento[nombre]);
 }
 
+// En vivo la dirección es #<id>/<pestaña>; un nombre de pestaña suelto vale para el roadmap actual.
+const direccion = (nombre) => '#' + encodeURIComponent(estado.id ?? '') + '/' + nombre;
+function enlazar() {
+  for (const nombre of PESTANAS) $('pestana-' + nombre).setAttribute('href', direccion(nombre));
+}
+
 function desdeDireccion(enfocar) {
   const hash = location.hash;
-  if (PESTANAS.includes(hash.slice(1))) seleccionar(hash.slice(1), true);
+  if (VIVO && !hash.startsWith('#r-')) {
+    const trozos = hash.slice(1).split('/');
+    const suelta = trozos.length === 1 && PESTANAS.includes(decodeURIComponent(trozos[0]));
+    const id = suelta ? estado.id : decodeURIComponent(trozos[0]) || null;
+    const pestana = trozos.length > 1 ? decodeURIComponent(trozos[1]) : suelta ? trozos[0] : 'avance';
+    const cambia = id !== estado.id;
+    const antes = activa;
+    estado.id = id;
+    // Sólo Agentes admite un tercer segmento: el id del agente elegido.
+    estado.agenteElegido = pestana === 'agentes' && trozos[2] ? decodeURIComponent(trozos[2]) : null;
+    seleccionar(PESTANAS.includes(pestana) ? pestana : 'avance', true);
+    if (estado.agentes) pintarArbol();
+    if (cambia && iniciado && activa === antes) actualizar();
+    if (id) enlazar();
+  } else if (PESTANAS.includes(hash.slice(1))) seleccionar(hash.slice(1), true);
   else if (hash.startsWith('#r-')) mostrarAncla(hash, enfocar);
 }
 window.addEventListener('hashchange', () => desdeDireccion(true));
 
 $('cabecera').querySelector('[role="tablist"]').addEventListener('keydown', (evento) => {
-  const indice = PESTANAS.indexOf(activa);
-  const destino = { ArrowRight: indice + 1, ArrowLeft: indice - 1, Home: 0, End: PESTANAS.length - 1 }[evento.key];
+  const visibles = PESTANAS.filter((nombre) => !$('pestana-' + nombre).hidden);
+  const indice = visibles.indexOf(activa);
+  const destino = { ArrowRight: indice + 1, ArrowLeft: indice - 1, Home: 0, End: visibles.length - 1 }[evento.key];
   if (evento.key === ' ' || evento.key === 'Spacebar') {
     evento.preventDefault();
     evento.target.click();
@@ -922,8 +1169,8 @@ $('cabecera').querySelector('[role="tablist"]').addEventListener('keydown', (eve
   }
   if (destino === undefined) return;
   evento.preventDefault();
-  const nombre = PESTANAS[(destino + PESTANAS.length) % PESTANAS.length];
-  history.replaceState(null, '', '#' + nombre);
+  const nombre = visibles[(destino + visibles.length) % visibles.length];
+  history.replaceState(null, '', VIVO && estado.id ? direccion(nombre) : '#' + nombre);
   seleccionar(nombre, true);
   $('pestana-' + nombre).focus();
 });
@@ -942,7 +1189,8 @@ window.addEventListener('pageshow', (evento) => { if (evento.persisted) actualiz
 desdeDireccion(false);
 iniciado = true;
 actualizar();
-setInterval(actualizar, REFRESCO_MS);
+setInterval(actualizar, VIVO ? CADA * 1000 : REFRESCO_MS);
+if (VIVO) setInterval(tictac, 1000);
 </script>
 </body>
 </html>
