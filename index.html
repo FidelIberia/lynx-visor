@@ -58,8 +58,21 @@ button[aria-pressed="true"] { border-color: var(--acento); color: var(--acento);
 .aviso { margin: 8px 16px 0; padding: 8px 12px; border-radius: 6px; background: var(--aviso-fondo); color: var(--aviso); }
 .roadmaps { flex: 1 1 100%; display: flex; gap: 6px; overflow-x: auto; margin: 0 0 4px; }
 .roadmaps:empty { display: none; }
+.roadmaps label { display: inline-flex; flex: 0 0 auto; align-items: center; gap: 6px; color: var(--suave); }
 .roadmaps a { padding: 4px 12px; border: 1px solid var(--linea); border-radius: 999px; color: var(--suave); text-decoration: none; white-space: nowrap; font-size: 14px; }
 .roadmaps a[aria-current="page"] { color: var(--acento); border-color: var(--acento); font-weight: 600; }
+@media (max-width: 599.98px) {
+  .pestanas { flex: 1 1 100%; min-width: 0; flex-wrap: nowrap; overflow-x: auto; }
+  .pestanas a { flex: 0 0 auto; white-space: nowrap; padding: 0 10px; font-size: 14px; }
+  .roadmaps { min-width: 0; flex-wrap: nowrap; overflow-x: auto; }
+  .roadmaps a { flex: 0 0 auto; white-space: nowrap; padding: 0 10px; font-size: 14px; }
+  .roadmaps select { max-width: 45vw; text-overflow: ellipsis; }
+  .roadmaps.con-equipos { flex-wrap: wrap; overflow-x: visible; }
+  .roadmaps.con-equipos label { flex: 1 1 calc(50% - 3px); min-width: 0; }
+  .roadmaps.con-equipos label:only-of-type { flex-basis: 100%; }
+  .roadmaps.con-equipos select { flex: 1; min-width: 0; max-width: 100%; }
+  .roadmaps.con-equipos a { flex: 0 1 auto; max-width: 100%; white-space: normal; }
+}
 
 /* Chips de estado: color y, siempre, texto. */
 .chip { display: inline-flex; align-items: center; gap: 4px; padding: 1px 8px; border-radius: 999px; font-size: 13px; font-weight: 600; white-space: nowrap; background: var(--pend-fondo); color: var(--pend-texto); }
@@ -79,7 +92,7 @@ button[aria-pressed="true"] { border-color: var(--acento); color: var(--acento);
 .controles { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
 .controles label { display: inline-flex; align-items: center; gap: 6px; color: var(--suave); }
 .controles select { max-width: min(60vw, 340px); }
-.zoom { display: inline-flex; align-items: center; gap: 4px; }
+.zoom { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px; }
 .zoom button.icono { min-width: 36px; font-weight: 700; }
 .escala, .hora { color: var(--suave); font-size: 13px; font-variant-numeric: tabular-nums; }
 .leyenda { display: flex; flex-wrap: wrap; gap: 6px 14px; margin: 0; padding: 0; list-style: none; font-size: 13px; color: var(--suave); }
@@ -106,6 +119,13 @@ button[aria-pressed="true"] { border-color: var(--acento); color: var(--acento);
   .controles button { padding: 4px 8px; }
   .texto-boton { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 }
+@media (max-width: 599.98px) {
+  .lienzo-interior { width: 100%; min-width: 0; padding: 0; }
+  #grafo { width: 100%; min-width: 0; padding: 0; }
+  #lienzo { touch-action: none; overscroll-behavior: contain; }
+}
+#panel-avance.pantalla-completa, #panel-avance:fullscreen { position: fixed; inset: 0; width: 100%; height: 100dvh; z-index: 20; background: var(--fondo); }
+.pantalla-completa #lienzo, :fullscreen #lienzo { flex: 1; min-height: 0; touch-action: none; }
 table { border-collapse: collapse; width: 100%; background: var(--superficie); font-size: 14px; }
 th, td { text-align: left; padding: 6px 10px; border-bottom: 1px solid var(--linea); vertical-align: top; }
 th { font-weight: 600; color: var(--suave); }
@@ -181,6 +201,10 @@ summary:hover { color: var(--acento); }
   .seccion-plegable > summary { padding: 12px; }
   .seccion-cuerpo { padding: 0 12px 12px; }
 }
+@media (max-width: 599.98px) {
+  .diagrama .dibujo { padding: 0; }
+  .diagrama, .ramas-lienzo { min-width: 0; }
+}
 /* Pestaña Ramas */
 .ramas { display: grid; gap: 10px; max-width: 1180px; margin: 0 auto; padding: 12px 16px 48px; }
 .ramas-lienzo { overflow: auto; border: 1px solid var(--linea); border-radius: 8px; background: var(--linea-suave); padding: 12px; -webkit-overflow-scrolling: touch; touch-action: pan-x pan-y pinch-zoom; }
@@ -218,6 +242,7 @@ summary:hover { color: var(--acento); }
 <p id="aviso" class="aviso" role="status" hidden></p>
 <p id="aviso-agentes" class="aviso" role="status" hidden></p>
 <main id="contenido" tabindex="-1">
+  <section id="equipo-vacio" class="vacio" aria-live="polite" hidden></section>
   <section id="panel-avance" role="tabpanel" aria-labelledby="pestana-avance">
     <div class="avance-cabecera">
       <p id="estado" class="estado">Cargando…</p>
@@ -226,6 +251,7 @@ summary:hover { color: var(--acento); }
         <span class="zoom" role="group" aria-label="Tamaño del grafo">
           <button type="button" class="icono" id="alejar" aria-label="Alejar" title="Alejar (−)">−</button>
           <button type="button" id="ajustar" aria-pressed="true" title="El grafo entero cabe (0)">Ajustar</button>
+          <button type="button" id="pantalla" aria-pressed="false">Pantalla completa</button>
           <button type="button" id="real" aria-pressed="false" title="Tamaño real, con desplazamiento">100 %</button>
           <button type="button" class="icono" id="acercar" aria-label="Acercar" title="Acercar (+)">+</button>
           <output id="escala" class="escala" aria-live="off"></output>
@@ -273,8 +299,8 @@ const VIVO = !LOCAL && !GIST;
 const CADA = Math.max(2, Number(parametros.get('cada')) || 5);
 
 const $ = (id) => document.getElementById(id);
-// En pantallas estrechas se empieza a tamaño real (legible, con desplazamiento); «Ajustar» queda a un toque.
-const estado = { avance: null, lector: null, fase: null, faseElegida: false, modo: ESTRECHA.matches ? 'real' : 'ajustar', escala: 1, tamano: null, tabla: false, leido: 0, bueno: 0, id: null, vistoId: undefined, roadmapsHtml: '', agentes: null, agentesAviso: '', agenteElegido: null, agenteVisto: null };
+// El móvil abre encajado; entre 600 y 760 px se conserva el tamaño real.
+const estado = { avance: null, lector: null, fase: null, faseElegida: false, modo: ESTRECHA.matches && !window.matchMedia('(max-width: 599.98px)').matches ? 'real' : 'ajustar', escala: 1, tamano: null, tabla: false, leido: 0, bueno: 0, id: null, vistoId: undefined, roadmapsHtml: '', agentes: null, agentesAviso: '', agentesAvisoDatos: '', agenteElegido: null, agenteVisto: null };
 
 const esc = (valor) => String(valor ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 const ancla = (id) => 'r-' + String(id).replace(/[^\w-]/g, '_');
@@ -369,14 +395,44 @@ async function leer() {
 async function leerVivo() {
   const indice = JSON.parse(await texto('roadmaps.json'));
   if (indice.schema_version !== 1 || !Array.isArray(indice.roadmaps)) throw new Error(`roadmaps.json: versión ${indice.schema_version} no compatible`);
+  estado.indice = indice;
   const pedido = estado.id;
-  const elegido = indice.roadmaps.find((r) => r.id === pedido) || indice.roadmaps[0];
+  const equipoPedido = estado.equipo;
+  const equipo = indice.equipos?.find((e) => e.nombre === equipoPedido)
+    || (!indice.roadmaps.length ? indice.equipos?.[0] : null);
+  const disponibles = equipo ? indice.roadmaps.filter((r) => r.equipo === equipo.nombre) : indice.roadmaps;
+  const elegido = disponibles.find((r) => r.id === pedido) || disponibles[0];
+  if (!elegido && equipo) return { indice, id: null, pedido, equipo: equipo.nombre, equipoPedido, publicado: indice.generado };
   if (!elegido) throw new Error('roadmaps.json: sin roadmaps');
   const carpeta = encodeURIComponent(elegido.id) + '/';
   const [avance, lector, ramas, agentes] = await Promise.all([
     texto(carpeta + 'avance.md'), texto(carpeta + 'lector.json', true), texto(carpeta + 'ramas.md', true), texto(carpeta + 'agentes.json', true),
   ]);
-  return { avance, lector, ramas, agentes, publicado: indice.generado, indice, id: elegido.id, pedido };
+  return { avance, lector, ramas, agentes, publicado: indice.generado, indice, id: elegido.id, pedido, equipoPedido };
+}
+
+function grupos(indice) {
+  const equipos = new Map(indice.equipos.map((equipo) => [equipo.nombre, new Map()]));
+  for (const roadmap of indice.roadmaps) {
+    const proyectos = equipos.get(roadmap.equipo);
+    if (!proyectos) continue;
+    const proyecto = roadmap.proyecto ?? '(sin proyecto)';
+    if (!proyectos.has(proyecto)) proyectos.set(proyecto, []);
+    proyectos.get(proyecto).push(roadmap);
+  }
+  return equipos;
+}
+
+function avisoEquipo(indice, id, nombre = indice?.roadmaps.find((r) => r.id === id)?.equipo) {
+  const equipo = indice?.equipos?.find((e) => e.nombre === nombre);
+  if (!equipo) return { texto: '', motivo: '' };
+  let texto = '';
+  if (equipo.estado === 'sin_conexion') texto = equipo.ultima_lectura
+    ? `${nombre}: sin conexión desde ${hora(equipo.ultima_lectura)}` : `${nombre}: sin conexión (sin lecturas)`;
+  else if (equipo.estado === 'en_linea' && !equipo.local && Date.now() - Date.parse(equipo.generado) > 3000 * equipo.cada) {
+    texto = `datos de ${nombre} desactualizados (generados a las ${hora(equipo.generado)})`;
+  }
+  return { texto, motivo: equipo.motivo || '' };
 }
 
 // Cambiar de roadmap descarta lo leído del anterior. Un id desconocido o desaparecido lleva al primero, salvo que
@@ -386,17 +442,57 @@ function elegirRoadmap(datos) {
     Object.assign(estado, { vistoId: datos.id, avance: null, avanceTexto: undefined, lector: null, lectorTexto: undefined, ramasTexto: undefined,
       agentesTexto: undefined, fase: null, faseElegida: false });
   }
-  if (estado.id === datos.pedido) {
+  if (estado.id === datos.pedido && estado.equipo === datos.equipoPedido) {
     estado.id = datos.id;
-    if (datos.pedido && datos.pedido !== datos.id) history.replaceState(null, '', direccion(activa));
+    estado.equipo = datos.equipo;
+    if ((datos.pedido && datos.pedido !== datos.id) || datos.equipoPedido !== datos.equipo) history.replaceState(null, '', direccion(activa));
   }
-  const html = datos.indice.roadmaps.map((r) => `<a href="#${encodeURIComponent(r.id)}/avance"${r.id === estado.id ? ' aria-current="page"' : ''}>`
-    + `${esc([r.proyecto, r.titulo].filter(Boolean).join(' · ') || r.id)}</a>`).join('');
+  estado.indice = datos.indice;
+  const elegido = datos.indice.roadmaps.find((r) => r.id === datos.id);
+  estado.tituloCorto = elegido?.titulo_corto || '';
+  let roadmaps = datos.indice.roadmaps, selectores = '', equipos, proyectos;
+  if (Array.isArray(datos.indice.equipos) && datos.indice.equipos.length) {
+    equipos = grupos(datos.indice);
+    const nombre = datos.equipo || elegido.equipo;
+    proyectos = equipos.get(nombre);
+    const proyecto = elegido?.proyecto ?? '(sin proyecto)';
+    roadmaps = proyectos.get(proyecto) || [];
+    selectores = '<label>Equipo <select id="equipo">' + datos.indice.equipos.map((e) =>
+      `<option value="${esc(e.nombre)}"${e.nombre === nombre ? ' selected' : ''}>${esc(e.nombre + (e.estado !== 'en_linea' ? ' · sin conexión' : ''))}</option>`).join('') + '</select></label>';
+    if (proyectos.size > 1) selectores += '<label>Proyecto <select id="proyecto">' + [...proyectos.keys()].map((p) =>
+      `<option value="${esc(p)}"${p === proyecto ? ' selected' : ''}>${esc(window.matchMedia('(max-width: 599.98px)').matches ? p.split(/[\\/]/).pop() : p)}</option>`).join('') + '</select></label>';
+  }
+  const html = selectores + roadmaps.map((r) => `<a href="#${encodeURIComponent(r.id)}/avance" title="${esc([r.proyecto, r.titulo].filter(Boolean).join(' · ') || r.id)}"${r.id === estado.id ? ' aria-current="page"' : ''}>`
+    + `${esc(r.titulo_corto || r.titulo || r.id)}</a>`).join('');
   if (html !== estado.roadmapsHtml) {
     $('roadmaps').innerHTML = html;
     estado.roadmapsHtml = html;
   }
+  $('roadmaps').className = equipos ? 'roadmaps con-equipos' : 'roadmaps';
+  if (equipos) {
+    $('equipo').onchange = (evento) => {
+      const primero = [...equipos.get(evento.target.value).values()].flat()[0];
+      location.hash = primero ? '#' + encodeURIComponent(primero.id) + '/avance' : '#/equipo/' + encodeURIComponent(evento.target.value);
+    };
+    if (proyectos.size > 1) $('proyecto').onchange = (evento) => {
+      location.hash = '#' + encodeURIComponent(proyectos.get(evento.target.value)[0].id) + '/avance';
+    };
+  }
   enlazar();
+}
+
+function pintarEquipoVacio(datos) {
+  const equipo = datos.indice.equipos?.find((e) => e.nombre === datos.equipo);
+  const panel = $('equipo-vacio');
+  panel.hidden = !equipo;
+  for (const nombre of PESTANAS) $('panel-' + nombre).hidden = !!equipo || nombre !== activa;
+  if (!equipo) return;
+  const texto = equipo.estado === 'sin_conexion'
+    ? equipo.ultima_lectura ? `${equipo.nombre}: sin conexión desde ${hora(equipo.ultima_lectura)}` : `${equipo.nombre}: sin conexión (sin lecturas todavía)`
+    : `${equipo.nombre}: en línea, sin roadmaps publicados`;
+  panel.innerHTML = `<h2>${esc(texto)}</h2><p>Comprueba que ${esc(equipo.nombre)} está encendido, que publica su vista con lynx serve y que este equipo puede acceder a ella.</p>`
+    + (equipo.motivo ? `<p>${esc(equipo.motivo)}</p>` : '');
+  $('titulo').textContent = equipo.nombre;
 }
 
 const horaCompleta = (valor) => new Date(valor).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
@@ -424,38 +520,41 @@ async function consultar() {
     const datos = await leer();
     const consultado = Date.now();
     if (VIVO) elegirRoadmap(datos);
-    // El texto leído se guarda sólo tras pintarlo bien: si falla, se vuelve a intentar en la siguiente lectura.
-    if (datos.lector !== estado.lectorTexto) {
-      const previo = estado.lector;
-      try {
-        estado.lector = lectorValido(datos.lector);
-        pintarLector();
-      } catch (error) {
-        estado.lector = previo;
-        throw error;
+    if (VIVO) pintarEquipoVacio(datos);
+    if (!datos.equipo) {
+      // El texto leído se guarda sólo tras pintarlo bien: si falla, se vuelve a intentar en la siguiente lectura.
+      if (datos.lector !== estado.lectorTexto) {
+        const previo = estado.lector;
+        try {
+          estado.lector = lectorValido(datos.lector);
+          pintarLector();
+        } catch (error) {
+          estado.lector = previo;
+          throw error;
+        }
+        estado.lectorTexto = datos.lector;
       }
-      estado.lectorTexto = datos.lector;
-    }
-    if (datos.avance !== estado.avanceTexto) {
-      const previo = estado.avance;
-      try {
-        estado.avance = leerAvance(datos.avance);
-        await pintarAvance();
-      } catch (error) {
-        estado.avance = previo;
-        throw error;
+      if (datos.avance !== estado.avanceTexto) {
+        const previo = estado.avance;
+        try {
+          estado.avance = leerAvance(datos.avance);
+          await pintarAvance();
+        } catch (error) {
+          estado.avance = previo;
+          throw error;
+        }
+        estado.avanceTexto = datos.avance;
       }
-      estado.avanceTexto = datos.avance;
-    }
-    // Un gist sin ramas.md (publicado con 0.6.0) se lee como null: la pestaña dice que no hay datos.
-    if (datos.ramas !== estado.ramasTexto) {
-      await pintarRamas(datos.ramas);
-      estado.ramasTexto = datos.ramas;
-    }
-    if (VIVO && datos.agentes !== estado.agentesTexto) {
-      pintarAgentes(datos.agentes);
-      estado.agentesTexto = datos.agentes;
-    }
+      // Un gist sin ramas.md (publicado con 0.6.0) se lee como null: la pestaña dice que no hay datos.
+      if (datos.ramas !== estado.ramasTexto) {
+        await pintarRamas(datos.ramas);
+        estado.ramasTexto = datos.ramas;
+      }
+      if (VIVO && datos.agentes !== estado.agentesTexto) {
+        pintarAgentes(datos.agentes);
+        estado.agentesTexto = datos.agentes;
+      }
+    } else pintarAgentes(null);
     estado.leido = consultado;
     // En vivo, los datos también son viejos si quien los escribe lleva más de 3 × cada sin renovarlos.
     const viejo = VIVO && consultado - Date.parse(datos.indice.generado) > 3000 * (Number(datos.indice.cada) || CADA);
@@ -475,6 +574,13 @@ async function consultar() {
     if (!estado.lector) $('lector').innerHTML = '<p class="vacio">Sin datos del roadmap.</p>';
     if (estado.ramasTexto === undefined) $('ramas-estado').textContent = 'Sin datos de ramas.';
   }
+  const indice = estado.indice;
+  const nombres = VIVO ? new Set([estado.equipo || indice?.roadmaps.find((r) => r.id === estado.id)?.equipo,
+    ...(indice?.equipos || []).filter((e) => e.estado === 'sin_conexion' && !indice.roadmaps.some((r) => r.equipo === e.nombre)).map((e) => e.nombre)]) : new Set();
+  const equipos = [...nombres].map((nombre) => avisoEquipo(indice, estado.id, nombre)).filter((e) => e.texto);
+  aviso.textContent = [aviso.textContent, ...equipos.map((e) => e.texto)].filter(Boolean).join(' · ');
+  aviso.title = [aviso.title, ...equipos.map((e) => e.motivo)].filter(Boolean).join(' · ');
+  aviso.hidden = !aviso.textContent;
 }
 
 // Un lector.json sin «roadmap» (p. ej. {}) se trata como ausente, igual que un gist sin lector.json.
@@ -556,10 +662,23 @@ function fuenteGrafo(grafo, fase) {
   bloques.forEach((b) => ids.add(b.id));
   const salida = [];
   for (const pieza of grafo.piezas) {
-    if (pieza.tipo === 'bloque') { if (bloques.includes(pieza)) salida.push(...pieza.lineas); continue; }
+    if (pieza.tipo === 'bloque') {
+      if (bloques.includes(pieza)) salida.push(...pieza.lineas);
+      continue;
+    }
     const limpia = pieza.linea.trim();
     if (pieza.tipo === 'directiva' || pieza.tipo === 'cabecera' || pieza.tipo === 'classDef') salida.push(pieza.linea);
-    else if (pieza.tipo === 'otra' && !fase) salida.push(pieza.linea);
+    else if (pieza.tipo === 'otra') {
+      if (!fase) salida.push(pieza.linea);
+      else {
+        const partes = limpia.replace(/;\s*$/, '').split(/(\s*(?:--\s+.+?\s+-->|-\.\s+.+?\s+\.->|==\s+.+?\s+==>|(?:[-=.]{2,}>|[-=.]{3,})(?:\s*\|[^|]*\|)?)\s*)/);
+        for (let i = 1; i < partes.length; i += 2) {
+          const origenes = partes[i - 1].split('&').map((id) => id.trim()).filter((id) => ids.has(id));
+          const destinos = partes[i + 1].split('&').map((id) => id.trim()).filter((id) => ids.has(id));
+          for (const origen of origenes) for (const destino of destinos) salida.push(`  ${origen}${partes[i]}${destino}`);
+        }
+      }
+    }
     else if (pieza.tipo === 'linkStyle' && !fase) salida.push(pieza.linea);
     else if (pieza.tipo === 'class') {
       const partes = limpia.match(/^class\s+(\S+)\s+(.+)$/);
@@ -571,6 +690,8 @@ function fuenteGrafo(grafo, fase) {
     }
   }
   if (!salida.some((l) => /^\s*(flowchart|graph)\b/.test(l))) salida.splice(salida.filter((l) => /^\s*%%\{/.test(l)).length, 0, 'flowchart TD');
+  // Se reserva altura para el rótulo de fase, también en dos líneas.
+  salida.unshift('%%{init: {"flowchart": {"subGraphTitleMargin": {"top": 6, "bottom": 40}}}}%%');
   return salida.join('\n');
 }
 
@@ -609,6 +730,26 @@ function colocar(destino, svg) {
   }
 }
 
+// Los diagramas conservan al menos el 60 % y texto de 10 px; su caja permite desplazarlos.
+function dimensionarDiagrama(svg, contenedor) {
+  const caja = (svg.getAttribute('viewBox') || '').split(/[\s,]+/).map(Number);
+  if (caja.length !== 4 || !(caja[2] > 0)) return;
+  let fuente = Infinity;
+  for (const elemento of svg.querySelectorAll('text, tspan, foreignObject *')) {
+    if (![...elemento.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim())) continue;
+    const estilo = window.getComputedStyle(elemento);
+    if (estilo.display === 'none' || estilo.visibility === 'hidden') continue;
+    const tamano = parseFloat(estilo.fontSize);
+    if (tamano > 0) fuente = Math.min(fuente, tamano);
+  }
+  const ancho = Math.max(caja[2] * 0.6, caja[2] * 10 / fuente, Math.min(caja[2], contenedor.clientWidth));
+  svg.removeAttribute('style');
+  svg.setAttribute('width', Math.ceil(ancho));
+  svg.setAttribute('height', Math.ceil(caja[3] * ancho / caja[2]));
+  svg.style.maxWidth = 'none';
+  return Math.ceil(ancho) / caja[2];
+}
+
 // ---------- Pestaña Avance ----------
 
 function estiloMuestra(definicion) {
@@ -628,14 +769,14 @@ function faseInicial(avance) {
   const enCurso = (estado.lector && estado.lector.progress && estado.lector.progress.current_phase)
     || (avance.resumen.match(/fase en curso (\S+?)[\s·.,]/) || [])[1]
     || (avance.grafo.fases.find((f) => /en curso/i.test(f.etiqueta)) || {}).id;
-  // En el móvil y en el PC se empieza por la fase en curso: el grafo entero sólo se lee ampliándolo.
   return ids.includes(enCurso) ? enCurso : '';
 }
 
 async function pintarAvance() {
   const avance = estado.avance;
   const titulo = avance.titulo.replace(/^Avance:\s*/, '') || (estado.lector && estado.lector.roadmap.title) || 'Avance del roadmap';
-  $('titulo').textContent = titulo;
+  $('titulo').textContent = window.matchMedia('(max-width: 599.98px)').matches ? estado.tituloCorto || titulo : titulo;
+  $('titulo').title = titulo;
   document.title = titulo;
   $('estado').innerHTML = avance.fecha ? `<strong>Estado a ${esc(avance.fecha)}:</strong> ${esc(avance.resumen)}` : esc(avance.resumen || 'Sin avance registrado.');
   $('leyenda').innerHTML = avance.grafo.leyenda.map((l) => `<li><span class="muestra" style="${esc(estiloMuestra(l.estilo))}" aria-hidden="true"></span>${esc(l.texto)}</li>`).join('');
@@ -677,25 +818,29 @@ async function pintarGrafo() {
   if (estado.modo === 'ajustar') ajustar(); else escalar(estado.escala);
 }
 
-function escalar(escala) {
+function escalar(escala, minimo = 0.05) {
   const svg = $('grafo').querySelector('svg');
-  estado.escala = Math.min(4, Math.max(0.05, escala));
+  estado.escala = Math.min(4, Math.max(minimo, escala));
   $('escala').textContent = Math.round(estado.escala * 100) + ' %';
   $('ajustar').setAttribute('aria-pressed', String(estado.modo === 'ajustar'));
   $('real').setAttribute('aria-pressed', String(estado.modo === 'real'));
   if (!svg || !estado.tamano) return;
+  svg.style.width = '';
+  svg.style.height = '';
   svg.setAttribute('width', Math.round(estado.tamano.ancho * estado.escala));
   svg.setAttribute('height', Math.round(estado.tamano.alto * estado.escala));
 }
 
-// Ajustar: el grafo entero cabe en el lienzo, sin agrandarlo por encima de su tamaño real.
+// Ajustar: el grafo entero cabe en el lienzo sin agrandarlo.
 function ajustar() {
   estado.modo = 'ajustar';
   const lienzo = $('lienzo');
   if (!estado.tamano || !lienzo.clientWidth) return escalar(estado.escala);
+  // Retirar las barras del SVG ampliado antes de medir el espacio de encaje.
+  escalar(0, 0);
   const ancho = lienzo.clientWidth - 40;
   const alto = lienzo.clientHeight - 40;
-  escalar(Math.min(1, ancho / estado.tamano.ancho, alto / estado.tamano.alto));
+  escalar(Math.min(1, ancho / estado.tamano.ancho, alto / estado.tamano.alto), 0);
 }
 
 function ampliar(factor) {
@@ -715,6 +860,45 @@ $('fase').addEventListener('change', (evento) => {
   pintarGrafo();
 });
 $('ajustar').addEventListener('click', ajustar);
+function pantallaCompleta() {
+  const panel = $('panel-avance');
+  return document.fullscreenElement === panel || panel.classList.contains('pantalla-completa');
+}
+function configurarPantalla() {
+  const panel = $('panel-avance'), boton = $('pantalla');
+  let abierta = false;
+  const mostrar = (valor) => {
+    abierta = valor;
+    boton.textContent = valor ? 'Salir' : 'Pantalla completa';
+    boton.setAttribute('aria-pressed', String(valor));
+    requestAnimationFrame(ajustar);
+  };
+  const salir = (desdeHistorial = false) => {
+    if (!abierta) return;
+    panel.classList.remove('pantalla-completa');
+    mostrar(false);
+    if (document.fullscreenElement === panel) document.exitFullscreen();
+    if (!desdeHistorial && history.state?.pantalla) history.back();
+  };
+  boton.addEventListener('click', async () => {
+    if (abierta) return salir();
+    if (panel.requestFullscreen) {
+      try { await panel.requestFullscreen(); }
+      catch { panel.classList.add('pantalla-completa'); }
+    } else panel.classList.add('pantalla-completa');
+    history.pushState({ pantalla: true }, '');
+    mostrar(true);
+  });
+  document.addEventListener('fullscreenchange', () => {
+    if (!document.fullscreenElement && !panel.classList.contains('pantalla-completa')) salir();
+  });
+  window.addEventListener('keydown', (evento) => {
+    if (evento.key === 'Escape' && abierta) { evento.preventDefault(); salir(); }
+  });
+  // La entrada conserva el hash: Atrás sólo cierra el grafo, sin cambiar de pestaña.
+  window.addEventListener('popstate', () => salir(true));
+}
+configurarPantalla();
 $('real').addEventListener('click', () => { estado.modo = 'real'; escalar(1); });
 $('acercar').addEventListener('click', () => ampliar(1.25));
 $('alejar').addEventListener('click', () => ampliar(0.8));
@@ -734,6 +918,71 @@ $('lienzo').addEventListener('keydown', (evento) => {
   else return;
   evento.preventDefault();
 });
+function gestosGrafo() {
+  const lienzo = $('lienzo');
+  const tactil = () => window.matchMedia('(max-width: 599.98px)').matches || pantallaCompleta();
+  const punteros = new Map();
+  let inicio = null;
+  let pellizco = null;
+  let ultimoToque = null;
+  const centro = () => {
+    const [a, b] = [...punteros.values()];
+    return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2, distancia: Math.hypot(a.x - b.x, a.y - b.y) };
+  };
+  lienzo.addEventListener('pointerdown', (e) => {
+    if (e.pointerType !== 'touch' || !tactil()) return;
+    punteros.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (punteros.size === 1) {
+      inicio = { x: e.clientX, y: e.clientY, izquierda: lienzo.scrollLeft, arriba: lienzo.scrollTop, at: e.timeStamp, movido: false };
+    } else if (punteros.size === 2) {
+      const svg = $('grafo').querySelector('svg');
+      if (!svg || !estado.tamano) return;
+      const punto = centro(), caja = svg.getBoundingClientRect();
+      pellizco = { distancia: punto.distancia, escala: estado.escala,
+        x: (punto.x - caja.left) / estado.escala, y: (punto.y - caja.top) / estado.escala };
+      inicio = null;
+      ultimoToque = null;
+    }
+  });
+  lienzo.addEventListener('pointermove', (e) => {
+    if (!punteros.has(e.pointerId)) return;
+    punteros.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (punteros.size >= 2 && pellizco) {
+      e.preventDefault();
+      const punto = centro();
+      estado.modo = 'manual';
+      escalar(pellizco.escala * punto.distancia / Math.max(1, pellizco.distancia));
+      const caja = $('grafo').querySelector('svg').getBoundingClientRect();
+      lienzo.scrollLeft += caja.left + pellizco.x * estado.escala - punto.x;
+      lienzo.scrollTop += caja.top + pellizco.y * estado.escala - punto.y;
+    } else if (inicio && Math.hypot(e.clientX - inicio.x, e.clientY - inicio.y) >= 4) {
+      inicio.movido = true;
+      ultimoToque = null;
+      e.preventDefault();
+      lienzo.scrollLeft = inicio.izquierda - (e.clientX - inicio.x);
+      lienzo.scrollTop = inicio.arriba - (e.clientY - inicio.y);
+    }
+  });
+  const soltar = (e) => {
+    if (!punteros.has(e.pointerId)) return;
+    if (e.type === 'pointerup' && inicio && !inicio.movido && e.timeStamp - inicio.at < 300) {
+      if (ultimoToque && e.timeStamp - ultimoToque.at < 300
+          && Math.hypot(e.clientX - ultimoToque.x, e.clientY - ultimoToque.y) < 24) {
+        e.preventDefault();
+        ajustar();
+        ultimoToque = null;
+      } else ultimoToque = { x: e.clientX, y: e.clientY, at: e.timeStamp };
+    } else ultimoToque = null;
+    punteros.delete(e.pointerId);
+    pellizco = null;
+    const restante = punteros.values().next().value;
+    inicio = restante ? { ...restante, izquierda: lienzo.scrollLeft, arriba: lienzo.scrollTop, at: e.timeStamp, movido: true } : null;
+  };
+  lienzo.addEventListener('pointerup', soltar);
+  lienzo.addEventListener('pointercancel', soltar);
+}
+gestosGrafo();
+
 // Con el ratón, el grafo se arrastra; en pantallas táctiles se desplaza y se amplía con los dedos.
 // El puntero se captura sólo al pasar de ARRASTRE_PX: capturarlo al pulsar enviaría el click al lienzo y no al nodo del grafo.
 (() => {
@@ -764,6 +1013,7 @@ $('lienzo').addEventListener('keydown', (evento) => {
 // ---------- Pestaña Roadmap ----------
 
 const ESTADOS = {
+  archivado: ['otro', '–', 'Archivado'],
   complete: ['ok', '✓', 'Completada'], completed: ['ok', '✓', 'Completada'], active: ['curso', '●', 'En curso'],
   pending: ['pend', '○', 'Pendiente'], planned: ['pend', '○', 'Planificada'], blocked: ['bloq', '!', 'Bloqueada'],
   deferred: ['otro', '–', 'Aplazada'], cancelled: ['otro', '×', 'Cancelada'],
@@ -890,9 +1140,12 @@ function dibujarDiagramas(raiz) {
     destino.removeAttribute('data-mermaid');
     dibujar(codigo).then((svg) => {
       colocar(destino, svg);
-      // En pantallas estrechas el diagrama no se encoge hasta ser ilegible: se desplaza en horizontal.
-      const ancho = Number(((destino.querySelector('svg') || {}).getAttribute?.('viewBox') || '').split(/[\s,]+/)[2]);
-      if (ancho > 0) destino.querySelector('svg').style.minWidth = Math.min(ancho, 560) + 'px';
+      if (window.matchMedia('(max-width: 599.98px)').matches) {
+        dimensionarDiagrama(destino.querySelector('svg'), destino);
+      } else {
+        const ancho = Number(((destino.querySelector('svg') || {}).getAttribute?.('viewBox') || '').split(/[\s,]+/)[2]);
+        if (ancho > 0) destino.querySelector('svg').style.minWidth = Math.min(ancho, 560) + 'px';
+      }
     }).catch((error) => {
       destino.innerHTML = `<p class="vacio" style="color:#374151">No se pudo dibujar el diagrama: ${esc(error.message)}</p>`;
     });
@@ -953,8 +1206,12 @@ async function pintarRamas(md) {
     grafo.innerHTML = `<p class="vacio" style="line-height:1.5">No se pudo dibujar el grafo de ramas: ${esc(error.message)}.</p>`;
     return;
   }
-  // Tamaño real, con desplazamiento: en el móvil las etiquetas siguen legibles.
+  // Escritorio a tamaño real; en móvil se limita la reducción para conservar las etiquetas legibles.
   const svg = grafo.querySelector('svg');
+  if (window.matchMedia('(max-width: 599.98px)').matches) {
+    dimensionarDiagrama(svg, lienzo);
+    return;
+  }
   const caja = (svg.getAttribute('viewBox') || '').split(/[\s,]+/).map(Number);
   if (caja.length === 4 && caja[2] > 0) {
     svg.removeAttribute('style');
@@ -1030,9 +1287,12 @@ function htmlAgentes(agentes, cerrados, elegido, forzar) {
 
 function avisoAgentes() {
   const a = estado.agentes;
-  const viejo = a && Date.now() - Date.parse(a.generado) > 3000 * (Number(a.cada) || CADA);
+  const nombre = estado.indice?.roadmaps.find((r) => r.id === estado.id)?.equipo;
+  const equipo = estado.indice?.equipos?.find((e) => e.nombre === nombre);
+  const margen = equipo && !equipo.local ? 3000 * (Number(equipo.cada) || CADA) : 0;
+  const viejo = a && Date.now() - Date.parse(a.generado) > 3000 * (Number(a.cada) || CADA) + margen;
   const sinAgente = a && estado.agenteElegido && !a.agentes.some((x) => x.id === estado.agenteElegido) ? `sin agente para ${estado.agenteElegido}` : '';
-  $('aviso-agentes').textContent = estado.agentesAviso || [sinAgente, viejo ? 'datos de agentes desactualizados' : ''].filter(Boolean).join(' · ');
+  $('aviso-agentes').textContent = estado.agentesAviso || [estado.agentesAvisoDatos, sinAgente, viejo ? 'datos de agentes desactualizados' : ''].filter(Boolean).join(' · ');
   $('aviso-agentes').hidden = !$('aviso-agentes').textContent;
 }
 
@@ -1056,11 +1316,15 @@ function pintarAgentes(texto) {
   let datos = null;
   estado.agentes = null;
   estado.agentesAviso = '';
+  estado.agentesAvisoDatos = '';
   try { datos = texto === null ? null : JSON.parse(texto); } catch (error) { estado.agentesAviso = 'agentes.json: no es JSON válido'; }
   if (texto !== null && !estado.agentesAviso) {
     if (!datos || datos.schema_version !== 1) estado.agentesAviso = `agentes.json: versión ${datos ? datos.schema_version : 'desconocida'} no compatible`;
     else if (!Array.isArray(datos.agentes)) estado.agentesAviso = 'agentes.json: falta la lista de agentes';
-    else estado.agentes = datos;
+    else {
+      estado.agentes = datos;
+      estado.agentesAvisoDatos = typeof datos.aviso === 'string' ? datos.aviso : '';
+    }
   }
   $('pestana-agentes').hidden = !estado.agentes;
   marcarPulsables($('grafo'));
@@ -1122,7 +1386,7 @@ function seleccionar(nombre, restaurar) {
     const pestana = $('pestana-' + otra);
     pestana.setAttribute('aria-selected', String(sel));
     pestana.tabIndex = sel ? 0 : -1;
-    $('panel-' + otra).hidden = !sel;
+    $('panel-' + otra).hidden = !sel || !!estado.equipo;
   }
   const cambia = nombre !== activa;
   activa = nombre;
@@ -1132,7 +1396,7 @@ function seleccionar(nombre, restaurar) {
 }
 
 // En vivo la dirección es #<id>/<pestaña>; un nombre de pestaña suelto vale para el roadmap actual.
-const direccion = (nombre) => '#' + encodeURIComponent(estado.id ?? '') + '/' + nombre;
+const direccion = (nombre) => estado.equipo ? '#/equipo/' + encodeURIComponent(estado.equipo) : '#' + encodeURIComponent(estado.id ?? '') + '/' + nombre;
 function enlazar() {
   for (const nombre of PESTANAS) $('pestana-' + nombre).setAttribute('href', direccion(nombre));
 }
@@ -1141,12 +1405,14 @@ function desdeDireccion(enfocar) {
   const hash = location.hash;
   if (VIVO && !hash.startsWith('#r-')) {
     const trozos = hash.slice(1).split('/');
+    const equipo = trozos[0] === '' && trozos[1] === 'equipo' && trozos[2] ? decodeURIComponent(trozos[2]) : undefined;
     const suelta = trozos.length === 1 && PESTANAS.includes(decodeURIComponent(trozos[0]));
-    const id = suelta ? estado.id : decodeURIComponent(trozos[0]) || null;
-    const pestana = trozos.length > 1 ? decodeURIComponent(trozos[1]) : suelta ? trozos[0] : 'avance';
-    const cambia = id !== estado.id;
+    const id = equipo ? null : suelta ? estado.id : decodeURIComponent(trozos[0]) || null;
+    const pestana = equipo ? 'avance' : trozos.length > 1 ? decodeURIComponent(trozos[1]) : suelta ? trozos[0] : 'avance';
+    const cambia = id !== estado.id || equipo !== estado.equipo;
     const antes = activa;
     estado.id = id;
+    estado.equipo = equipo;
     // Sólo Agentes admite un tercer segmento: el id del agente elegido.
     estado.agenteElegido = pestana === 'agentes' && trozos[2] ? decodeURIComponent(trozos[2]) : null;
     seleccionar(PESTANAS.includes(pestana) ? pestana : 'avance', true);
@@ -1180,7 +1446,10 @@ new ResizeObserver(([entrada]) => {
   document.documentElement.style.setProperty('--alto-cabecera', Math.ceil(entrada.target.getBoundingClientRect().height) + 'px');
   if (activa === 'avance' && estado.modo === 'ajustar') ajustar();
 }).observe($('cabecera'));
-window.addEventListener('resize', () => { if (activa === 'avance' && estado.modo === 'ajustar') ajustar(); });
+window.addEventListener('resize', () => {
+  if (estado.avance) $('titulo').textContent = window.matchMedia('(max-width: 599.98px)').matches ? estado.tituloCorto || $('titulo').title : $('titulo').title;
+  if (activa === 'avance' && estado.modo === 'ajustar') ajustar();
+});
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible') actualizar();
 });
